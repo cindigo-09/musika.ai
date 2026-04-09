@@ -1,0 +1,94 @@
+:root {
+  --bg-overlay: rgba(5, 5, 8, 0.7);
+  --mana-gold: #fff785cb;
+  --mana-silver: #b8b8c7;
+  --glass: rgba(15, 16, 26, 0.65);
+}
+
+/* Background setup for the GIF */
+.auth-page-wrapper {
+  background:
+    linear-gradient(var(--bg-overlay), var(--bg-overlay)),
+    url("./assets/log-reg--bg.gif") no-repeat center center fixed;
+  background-size: cover;
+  min-height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+}
+
+/* Glassmorphism Card */
+.musika-card {
+  background: var(--glass) !important;
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 4px;
+  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.6);
+}
+
+/* Underline-only inputs */
+.musika-input {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.637) !important;
+  border-radius: 0 !important;
+  color: var(--mana-silver) !important;
+  padding: 10px 0 !important;
+}
+
+.musika-input:focus {
+  border-bottom: 1px solid var(--mana-gold) !important;
+  box-shadow: none !important;
+}
+
+/* This targets the placeholder text specifically */
+.musika-input::placeholder {
+  /* Use a lighter silver or white with low opacity */
+  color: #b8b8c7 !important;
+  opacity: 0.4 !important; /* Adjust this value (0.1 to 1.0) to make it lighter or darker */
+
+  /* Optional: Match the "Mana" aesthetic with a slight letter spacing */
+  letter-spacing: 1px;
+  font-style: italic;
+}
+
+/* For cross-browser compatibility (older versions of Edge/Firefox) */
+.musika-input::-webkit-input-placeholder {
+  color: #b8b8c7 !important;
+  opacity: 0.4 !important;
+}
+
+.musika-input:-ms-input-placeholder {
+  color: #b8b8c7 !important;
+  opacity: 0.4 !important;
+}
+.password-toggle-eye {
+  position: absolute;
+  right: 0;
+  bottom: 12px;
+  cursor: pointer;
+  color: var(--mana-gold);
+  opacity: 0.6;
+}
+
+.mana-title {
+  font-family: "Space Mono", monospace;
+  color: var(--mana-gold);
+  letter-spacing: 8px;
+  text-shadow: 0 0 20px rgba(226, 192, 125, 0.3);
+}
+
+/* Style for the Select/Dropdown */
+select.musika-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23e2c07d' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0px center;
+  padding-right: 20px !important;
+}
+
+/* Ensure dropdown options don't have a white background */
+select.musika-input option {
+  background-color: #0f101a;
+  color: var(--mana-silver);
+}
