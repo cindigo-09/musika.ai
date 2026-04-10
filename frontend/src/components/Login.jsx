@@ -9,8 +9,24 @@ export default function Login() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    // Your login logic here
-    navigate("/home");
+    try {
+      const response = await fetch("http://localhost:5000/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("username", data.username);
+        navigate("/home");
+      } else {
+        alert(data.error);
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+    }
   };
 
   return (
@@ -18,13 +34,12 @@ export default function Login() {
       <div className="container-fluid">
         <div className="row g-0">
           <div className="col-md-6 d-flex flex-column justify-content-center align-items-center text-center p-5">
-            <h1 className="mana-title display-4">MUSIKA AI</h1>
+            <h1 className="page-title display-4">MUSIKA AI</h1>
             <p className="text-white opacity-75 font-italic">
               "A music player to bridge the gap between your soul and the
               different human melodies."
             </p>
           </div>
-
           <div className="col-md-6 d-flex justify-content-center align-items-center">
             <div className="card musika-card p-5" style={{ width: "420px" }}>
               <h3
@@ -42,6 +57,7 @@ export default function Login() {
                     onChange={(e) =>
                       setForm({ ...form, email: e.target.value })
                     }
+                    required
                   />
                 </div>
                 <div className="mb-4 position-relative">
@@ -52,6 +68,7 @@ export default function Login() {
                     onChange={(e) =>
                       setForm({ ...form, password: e.target.value })
                     }
+                    required
                   />
                   <span
                     className="password-toggle-eye"
@@ -60,18 +77,6 @@ export default function Login() {
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </span>
                 </div>
-                <div className="text-end mb-4">
-                  <Link
-                    to="/forgot"
-                    className="small"
-                    style={{
-                      color: "var(--mana-gold)",
-                      textDecoration: "none",
-                    }}
-                  >
-                    Forgot Password?
-                  </Link>
-                </div>
                 <button
                   className="btn w-100 py-3"
                   style={{
@@ -79,7 +84,7 @@ export default function Login() {
                     color: "var(--mana-gold)",
                   }}
                 >
-                  RELEASE MAGIC
+                  Login
                 </button>
               </form>
               <Link

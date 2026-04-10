@@ -8,7 +8,6 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Database connection pool
 const pool = mysql.createPool({
   host: "localhost",
   user: "root",
@@ -18,14 +17,24 @@ const pool = mysql.createPool({
 
 const JWT_SECRET = "musika_ai_secret_2026";
 
-// Register Feature
+//Fetch Genres on the registration form
+app.get("/api/genres", async (req, res) => {
+  try {
+    const [rows] = await pool.execute("SELECT genre_name FROM music_genre");
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch genres" });
+  }
+});
+
+//Register process
 app.post("/api/register", async (req, res) => {
-  const { username, email, password } = req.body;
+  const { username, email, age, genre, password } = req.body;
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     await pool.execute(
-      "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
-      [username, email, hashedPassword],
+      "INSERT INTO users (username, email, age, genre, password_hash) VALUES (?, ?, ?, ?, ?)",
+      [username, email, age, genre, hashedPassword],
     );
     res.status(201).json({ message: "User registered" });
   } catch (err) {
@@ -33,7 +42,7 @@ app.post("/api/register", async (req, res) => {
   }
 });
 
-// Login Feature
+//Login process
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -57,4 +66,4 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-app.listen(5000, () => console.log("Server running on port 5000"));
+app.listen(5000, () => console.log("Server running on http://localhost:5000"));
