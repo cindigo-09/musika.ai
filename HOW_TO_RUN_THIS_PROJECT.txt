@@ -1,0 +1,62 @@
+HOW TO RUN MUSIKA.AI LOCALLY
+=============================================
+This is a full-stack web application built using React (Frontend), Node.js (Backend), and Supabase (Database/Authentication). 
+
+Because it has a separate frontend and backend, you must run TWO servers simultaneously for the application to work! 
+
+---------------------------------------------
+STEP 1: INSTALLATION & PREREQUISITES
+---------------------------------------------
+1. Make sure you have Node.js installed on your computer. (Download from nodejs.org if you don't).
+2. You need to install the project dependencies for BOTH the frontend and the backend.
+
+Open a terminal and run:
+cd frontend
+npm install
+
+Open a second terminal and run:
+cd backend
+npm install
+
+---------------------------------------------
+STEP 2: ENVIRONMENT VARIABLES (.env)
+---------------------------------------------
+Make sure you have your `.env` files set up in both folders!
+
+Frontend (musika.ai/frontend/.env) needs:
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+Backend (musika.ai/backend/.env) needs:
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+ROLE_KEY=your_supabase_service_role_key
+
+---------------------------------------------
+STEP 3: RUNNING THE SERVERS
+---------------------------------------------
+Whenever you want to work on or use the app, you need to start BOTH servers.
+
+[SERVER 1] THE BACKEND (Node.js API & File Uploads)
+1. Open a new terminal.
+2. Navigate to the backend folder:
+   cd backend
+3. Start the server using:
+   npm run dev
+*(You should see "Server running on port 8080" in the console)*
+
+
+[SERVER 2] THE FRONTEND (React UI)
+1. Open a completely separate, second terminal window.
+2. Navigate to the frontend folder:
+   cd frontend
+3. Start the server using:
+   npm run dev
+*(You should see "Vite ready" and a localhost:5173 link)*
+
+
+---------------------------------------------
+TROUBLESHOOTING
+---------------------------------------------
+- "Stuck on Saving / Failed to fetch": This absolutely means your Backend server (Server 1) is closed or crashed. Restart the backend terminal using `npm run dev` to bring the port 8080 tunnel back online!
+- "Row-level Security Violation": This means your Supabase Database is locking you out. To fix it, you will need to open your Supabase Dashboard and configure your Table Policies to allow 'authenticated' users to INSERT/UPDATE their own rows.
