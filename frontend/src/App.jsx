@@ -1,13 +1,9 @@
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout";
-import Login from "./components/Login";
-import Register from "./components/Register";
-import Home from "./components/Home";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Home from "./pages/Home";
+import Profile from "./pages/Profile";
 import "./App.css";
 
 function App() {
@@ -20,6 +16,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/home" element={<Home />} />
+          <Route path="/profile" element={<Profile />} />
         </Route>
       </Routes>
     </Router>
@@ -27,3 +24,4 @@ function App() {
 }
 
 export default App;
+
