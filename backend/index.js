@@ -150,3 +150,22 @@ app.delete('/api/songs/:songId', (req, res) => {
 });
 
 app.listen(8080, () => console.log('Server running on port 8080'));
+
+// Update song details
+app.put('/api/songs/:songId', (req, res) => {
+    try {
+        const { title, artist } = req.body;
+        const songs = getSongs();
+        const index = songs.findIndex(s => s.song_id === req.params.songId);
+
+        if (index !== -1) {
+            songs[index].title = title || songs[index].title;
+            songs[index].artist = artist || songs[index].artist;
+            saveSongs(songs);
+            return res.json(songs[index]);
+        }
+        res.status(404).json({ error: "Song not found" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});

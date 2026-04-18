@@ -1,1 +1,29 @@
-[]
+[
+  {
+    "song_id": "b2c2e46f-3881-4c15-aa34-0d50fe844cfd",
+    "title": "Urs",
+    "artist": "NIKI",
+    "mood_tag": "Chill",
+    "user_id": "e6058db4-251b-463c-a2d6-46209d7f249e",
+    "song_url": "/uploads/640961ba-a25a-4c8d-825a-5f2cc23f5a46.mp3",
+    "created_at": "2026-04-18T00:34:02.410Z"
+  },
+  {
+    "song_id": "c470497a-fbab-4242-b34b-b32188de0bd0",
+    "title": "Urs",
+    "artist": "NIKI",
+    "mood_tag": "Chill",
+    "user_id": "d7a8167a-fa03-48ee-a73d-e054900f33c7",
+    "song_url": "/uploads/1606e092-7135-4b20-842d-25d3bebb45bf.mp3",
+    "created_at": "2026-04-18T01:05:08.698Z"
+  },
+  {
+    "song_id": "0abadbb6-9bd1-4d99-887e-792188c1e3f5",
+    "title": "Backburner",
+    "artist": "NIKI",
+    "mood_tag": "Chill",
+    "user_id": "e6058db4-251b-463c-a2d6-46209d7f249e",
+    "song_url": "/uploads/741b779b-1dc6-4c10-b2b7-260f8ce42214.mp3",
+    "created_at": "2026-04-18T01:11:35.032Z"
+  }
+]
