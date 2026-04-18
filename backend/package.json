@@ -13,10 +13,14 @@
   "type": "module",
   "dependencies": {
     "@supabase/supabase-js": "^2.103.3",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "multer": "^2.1.1"
+    "fs": "^0.0.1-security",
+    "multer": "^2.1.1",
+    "mysql2": "^3.22.1",
+    "path": "^0.12.7"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

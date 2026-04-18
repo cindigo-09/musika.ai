@@ -98,3 +98,18 @@ select.musika-input option {
   background-color: #0f101a;
   color: var(--mana-silver);
 }
+.custom-progress {
+  height: 4px;
+  background: #333;
+  border-radius: 2px;
+  cursor: pointer;
+  accent-color: var(--mana-gold);
+}
+
+.custom-progress::-webkit-slider-thumb {
+  height: 12px;
+  width: 12px;
+  background: var(--mana-gold);
+  border-radius: 50%;
+  cursor: pointer;
+}
