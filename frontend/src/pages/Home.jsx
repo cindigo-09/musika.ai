@@ -1,38 +1,29 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  Plus, Music, Play, Pause, LogOut, Trash2, User, Edit2, Check, X 
+import {
+  Plus, Music, Play, Pause, LogOut, Trash2, User, Edit2, Check, X
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { useMusic } from "../context/MusicContext";
+import Header from "../components/Header";
+import Sidebar from "../components/Sidebar";
 
 export default function Home() {
   const navigate = useNavigate();
   const { songs, setSongs, playSong, currentSong, isPlaying, stopMusic } = useMusic();
-  
+
   // UI States
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ title: "", artist: "" });
   const [file, setFile] = useState(null);
-  
+
   // Edit States
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({ title: "", artist: "" });
-  
+
   // User States
   const [userId, setUserId] = useState(null);
-  const [currentUser, setCurrentUser] = useState("Guest");
 
-  // 1. Auth & Data Fetching
-  useEffect(() => {
-    const checkUser = async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error || !user) { navigate("/login"); return; }
-      setUserId(user.id);
-      setCurrentUser(user.user_metadata?.username || user.email);
-    };
-    checkUser();
-  }, [navigate]);
 
   useEffect(() => {
     if (userId) fetchSongs();
@@ -57,10 +48,10 @@ export default function Home() {
     if (file) formData.append("mp3", file);
 
     const res = await fetch("http://localhost:8080/api/songs", { method: "POST", body: formData });
-    if (res.ok) { 
-      setShowModal(false); 
+    if (res.ok) {
+      setShowModal(false);
       setForm({ title: "", artist: "" });
-      fetchSongs(); 
+      fetchSongs();
     }
   };
 
@@ -89,26 +80,11 @@ export default function Home() {
   return (
     <div className="d-flex flex-column vh-100 vw-100 text-white overflow-hidden" style={{ background: "#050508" }}>
       {/* HEADER */}
-      <header className="d-flex justify-content-between align-items-center p-3 border-bottom border-secondary bg-dark bg-opacity-25" style={{ height: "70px" }}>
-        <h4 className="page-title m-0">MUSIKA.AI</h4>
-        <div className="d-flex align-items-center gap-3">
-          <div className="text-end d-none d-sm-block">
-            <div className="small text-white-50 text-uppercase">Operator</div>
-            <div className="fw-bold text-warning">{currentUser}</div>
-          </div>
-          <button onClick={handleLogout} className="btn btn-outline-danger btn-sm">
-            <LogOut size={16} />
-          </button>
-        </div>
-      </header>
+      <Header />
 
       <div className="d-flex flex-grow-1 overflow-hidden">
         {/* SIDEBAR */}
-        <aside className="d-none d-md-block border-end border-secondary p-4 bg-dark bg-opacity-10" style={{ width: "240px" }}>
-          <button className="btn btn-warning w-100 mb-4 fw-bold" onClick={() => navigate('/home')}><Music size={18} /> Library</button>
-          <button className="btn btn-warning w-100 mb-4 fw-bold" onClick={() => navigate('/profile')}><User size={18} /> Profile</button>
-        </aside>
-
+        <Sidebar />
         {/* MAIN LIBRARY */}
         <main className="flex-grow-1 p-3 p-md-5 overflow-auto custom-scrollbar">
           <div className="d-flex justify-content-between align-items-center mb-4">
@@ -123,7 +99,7 @@ export default function Home() {
               <thead>
                 <tr className="text-secondary small">
                   <th className="ps-4 py-3">TRACK INFO</th>
-                  <th className="text-end pe-4">ACTION</th>
+                  <th className="text-end pe-4 py-3">ACTION</th>
                 </tr>
               </thead>
               <tbody>
@@ -132,8 +108,8 @@ export default function Home() {
                     <td className="ps-4">
                       {editingId === s.song_id ? (
                         <div className="d-flex flex-column gap-1 py-2">
-                          <input className="musika-input" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} />
-                          <input className="musika-input small opacity-75" value={editForm.artist} onChange={e => setEditForm({...editForm, artist: e.target.value})} />
+                          <input className="musika-input" value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} />
+                          <input className="musika-input small opacity-75" value={editForm.artist} onChange={e => setEditForm({ ...editForm, artist: e.target.value })} />
                         </div>
                       ) : (
                         <>
