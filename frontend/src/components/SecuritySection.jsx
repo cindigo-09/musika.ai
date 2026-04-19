@@ -54,30 +54,8 @@ function SecuritySection() {
                 </div>
             </section>
 
-            <section className="p-4 rounded-4 position-relative overflow-hidden" style={{ backgroundColor: '#32353c' }}>
-                <h6 className="text-uppercase fw-bold mb-4">Studio Usage</h6>
-                <div className="mb-4">
-                    <div className="d-flex justify-content-between small text-uppercase mb-2">
-                        <span className="text-light">Storage</span>
-                        <span>0.00 GB / 50 GB</span>
-                    </div>
-                    <div className="progress bg-dark" style={{ height: '4px' }}>
-                        <div className="progress-bar bg-warning" style={{ width: '0%' }}></div>
-                    </div>
-                </div>
-                <div className="p-3 rounded-3 bg-danger bg-opacity-10 border border-danger border-opacity-25 mt-5">
-                    <h6 className="text-danger small fw-bold text-uppercase">Critical Area</h6>
-                    <p className="text-light small mb-3">Deleting your account is permanent and cannot be undone.</p>
-                    <button
-                        className="btn btn-outline-danger w-100 fw-bold py-3"
-                        onClick={handleDeleteAccount}
-                        disabled={deleting}
-                    >
-                        {deleting ? 'DELETING...' : 'DELETE ACCOUNT'}
-                    </button>
-                </div>
-            </section>
-        </div>
+
+        </div >
     );
 }
 
