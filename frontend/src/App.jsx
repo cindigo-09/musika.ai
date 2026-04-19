@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
+import Playlists from "./pages/Playlists";
 import "./App.css";
 
 function App() {
@@ -11,12 +12,12 @@ function App() {
     <Router>
       <Routes>
         <Route element={<Layout />}>
-          {/* All routes inside here will render within the Layout's <Outlet /> */}
           <Route path="/" element={<Navigate to="/login" />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/home" element={<Home />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/playlists" element={<Playlists />} />
         </Route>
       </Routes>
     </Router>

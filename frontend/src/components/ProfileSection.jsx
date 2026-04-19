@@ -104,20 +104,6 @@ function ProfileSection() {
                     </button>
                 </form>
             </section>
-
-            <section className="p-4 rounded-4" style={{ backgroundColor: 'rgba(39, 42, 49, 0.6)', border: '1px solid #32353c' }}>
-                <h6 className="text-uppercase fw-bold mb-4">Linked Hardware</h6>
-                <div className="p-3 rounded-3 mb-2 d-flex justify-content-between align-items-center" style={{ backgroundColor: '#191c22' }}>
-                    <div className="d-flex align-items-center gap-3">
-                        <span className="material-symbols-outlined text-warning">cloud_done</span>
-                        <div>
-                            <p className="m-0 small fw-bold">SoundCloud Sync</p>
-                            <p className="m-0 text-light small">Connected as {form.username || 'user'}</p>
-                        </div>
-                    </div>
-                    <button className="btn btn-link text-danger text-decoration-none small p-0">Disconnect</button>
-                </div>
-            </section>
         </div>
     );
 }
