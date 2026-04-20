@@ -6,6 +6,8 @@ import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
 import crypto from 'crypto';
+import axios from 'axios';
+
 
 dotenv.config();
 
@@ -49,10 +51,10 @@ const supabaseAdmin = createClient(
 app.delete('/api/user/:id', async (req, res) => {
     // Requires Service Role key to self-delete from auth users
     const { error } = await supabaseAdmin.auth.admin.deleteUser(req.params.id);
-    
+
     // Also cleanup profiles table
     await supabaseAdmin.from('profiles').delete().eq('id', req.params.id);
-    
+
     if (error) return res.status(500).json({ error: error.message });
     res.json({ success: true });
 });
@@ -60,12 +62,12 @@ app.delete('/api/user/:id', async (req, res) => {
 app.put('/api/user/:id/profile', async (req, res) => {
     // Uses Service Role key to bypass Row-Level Security on the profiles table
     const { username, bio } = req.body;
-    const { error } = await supabaseAdmin.from('profiles').upsert({ 
-        id: req.params.id, 
-        username, 
-        bio 
+    const { error } = await supabaseAdmin.from('profiles').upsert({
+        id: req.params.id,
+        username,
+        bio
     });
-    
+
     if (error) return res.status(500).json({ error: error.message });
     res.json({ success: true });
 });
@@ -82,13 +84,13 @@ app.get('/api/data', async (req, res) => {
 app.post('/api/songs', upload.single('mp3'), (req, res) => {
     try {
         const { title, artist, mood_tag, user_id } = req.body;
-        
+
         // Handle physical file storage mapping
         let song_url = '';
         if (req.file) {
             song_url = `/uploads/${req.file.filename}`;
         }
-        
+
         // Construct Database entity
         const newSong = {
             song_id: crypto.randomUUID(),
@@ -99,12 +101,12 @@ app.post('/api/songs', upload.single('mp3'), (req, res) => {
             song_url,
             created_at: new Date().toISOString()
         };
-        
+
         // Save permanently to local JSON store
         const songs = getSongs();
         songs.push(newSong);
         saveSongs(songs);
-        
+
         res.json(newSong);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -124,13 +126,13 @@ app.delete('/api/songs/:songId', (req, res) => {
     try {
         const songs = getSongs();
         const songIndex = songs.findIndex(s => s.song_id === req.params.songId);
-        
+
         if (songIndex === -1) {
             return res.status(404).json({ error: "Song not found" });
         }
-        
+
         const song = songs[songIndex];
-        
+
         // Remove physical file safely
         if (song.song_url) {
             const filePath = path.join(process.cwd(), song.song_url);
@@ -138,11 +140,11 @@ app.delete('/api/songs/:songId', (req, res) => {
                 fs.unlinkSync(filePath);
             }
         }
-        
+
         // Remove from database
         songs.splice(songIndex, 1);
         saveSongs(songs);
-        
+
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -167,5 +169,28 @@ app.put('/api/songs/:songId', (req, res) => {
         res.status(404).json({ error: "Song not found" });
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+});
+
+
+// Route to get music based on genre
+app.get('/api/recommendations', async (req, res) => {
+    const { genre } = req.query; // Get genre from frontend request
+
+    try {
+        const response = await axios.get('https://api.jamendo.com/v3.0/tracks/', {
+            params: {
+                client_id: process.env.JAMENDO_CLIENT_ID,
+                format: 'json',
+                limit: 10,
+                fuzzytags: genre, // Searches by genre/tags
+                boost: 'popularity_month'
+            }
+        });
+
+        res.json(response.data.results);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch music from Jamendo' });
     }
 });
