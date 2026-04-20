@@ -5,6 +5,7 @@ import Register from "./pages/Register";
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
 import Playlists from "./pages/Playlists";
+import Trial from "./pages/Trial";
 import "./App.css";
 
 function App() {
