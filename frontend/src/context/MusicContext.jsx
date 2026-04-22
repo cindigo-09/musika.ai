@@ -33,7 +33,7 @@ export const MusicProvider = ({ children }) => {
             setIsPlaying(!isPlaying);
         } else {
             audioRef.current.pause();
-            audioRef.current.src = `http://localhost:8080${song.song_url}`;
+            audioRef.current.src = song.song_url.startsWith('http') ? song.song_url : `http://localhost:8080${song.song_url}`;
             audioRef.current.load();
             audioRef.current.play();
             setCurrentSong(song);

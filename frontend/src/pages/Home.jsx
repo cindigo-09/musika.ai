@@ -23,11 +23,60 @@ export default function Home() {
 
   // User States
   const [userId, setUserId] = useState(null);
-
+  const [genre, setGenre] = useState(null);
+  const [recommendations, setRecommendations] = useState([]);
 
   useEffect(() => {
+    const initUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setUserId(session.user.id);
+        fetchUserProfile(session.user.id);
+      } else {
+        navigate("/login");
+      }
+    };
+    initUser();
+  }, [navigate]);
+
+  const fetchUserProfile = async (uid) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('favorite_genre')
+        .eq('id', uid)
+        .single();
+      if (data && data.favorite_genre) {
+        setGenre(data.favorite_genre);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };  useEffect(() => {
     if (userId) fetchSongs();
   }, [userId]);
+
+  useEffect(() => {
+    if (genre) fetchRecommendations(genre);
+  }, [genre]);
+
+  const fetchRecommendations = async (userGenre) => {
+    try {
+      const res = await fetch(`http://localhost:8080/api/recommendations?genre=${userGenre}`);
+      if (res.ok) {
+        const data = await res.json();
+        const mapped = data.map(track => ({
+          song_id: `jamendo-${track.id}`,
+          title: track.name,
+          artist: track.artist_name,
+          song_url: track.audio
+        }));
+        setRecommendations(mapped);
+      }
+    } catch (err) {
+      console.error("Failed to fetch recommendations:", err);
+    }
+  };
 
   const fetchSongs = async () => {
     try {
@@ -138,6 +187,45 @@ export default function Home() {
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="d-flex justify-content-between align-items-center mt-5 mb-4">
+            <h2 className="display-6 m-0">Recommended for You <span className="fs-5 text-muted">({genre || 'Loading...'})</span></h2>
+          </div>
+
+          <div className="musika-card rounded overflow-hidden shadow-lg border border-secondary border-opacity-25">
+            <table className="table table-dark table-hover m-0">
+              <thead>
+                <tr className="text-secondary small">
+                  <th className="ps-4 py-3">TRACK INFO</th>
+                  <th className="text-end pe-4 py-3">ACTION</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recommendations.map((s) => (
+                  <tr key={s.song_id} className="align-middle">
+                    <td className="ps-4">
+                      <div className="text-warning fw-bold">{s.title}</div>
+                      <div className="small text-white-50">{s.artist}</div>
+                    </td>
+                    <td className="text-end pe-4">
+                      <div className="d-flex justify-content-end align-items-center gap-3">
+                        <button className="btn btn-link text-warning p-0" onClick={() => playSong(s)}>
+                          {currentSong?.song_id === s.song_id && isPlaying ? <Pause size={24} /> : <Play size={24} />}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {recommendations.length === 0 && (
+                  <tr>
+                    <td colSpan="2" className="text-center py-4 text-white-50">
+                      Loading recommendations or no tracks found...
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
