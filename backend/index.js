@@ -61,10 +61,12 @@ app.delete('/api/user/:id', async (req, res) => {
 
 app.put('/api/user/:id/profile', async (req, res) => {
     // Uses Service Role key to bypass Row-Level Security on the profiles table
-    const { username, bio } = req.body;
+    const { username, age, favorite_genre, bio } = req.body;
     const { error } = await supabaseAdmin.from('profiles').upsert({
         id: req.params.id,
         username,
+        age,
+        favorite_genre,
         bio
     });
 

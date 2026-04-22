@@ -39,26 +39,34 @@ export default function Register() {
     setLoading(true);
 
     try {
-      // 2. Register user & pass profile data via metadata
+      // 2. Register the user in Supabase Auth
       const { data, error: authError } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: {
-            username,
-            age,
-            favorite_genre: genre
-          }
-        }
       });
 
       if (authError) throw authError;
 
-      // Note: You completely DELETE step 3 (the manual insert into 'profiles').
-      // The database will do it automatically now!
+      // 3. Save extra info to our 'profiles' table
+      if (data.user) {
+        // 3. Save extra info to our 'profiles' table via backend
+        const response = await fetch(`http://localhost:8080/api/user/${data.user.id}/profile`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username,
+            age,
+            favorite_genre: genre
+          })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.error || "Failed to save profile details");
+        }
+      }
 
       alert("Registration Complete! Check your email for a verification link.");
-
       navigate("/login");
     } catch (error) {
       alert(error.message);
