@@ -6,6 +6,16 @@ import { useMusic } from "../context/MusicContext";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 
+// Utility to create safe folder names
+const slugify = (text) => {
+  return text
+    .toString()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^\w\-]+/g, "")
+    .replace(/\-\-+/g, "-");
+};
+
 export default function Home() {
   const navigate = useNavigate();
   const {
@@ -19,17 +29,11 @@ export default function Home() {
     saveProgress,
   } = useMusic();
 
-  // UI States
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ title: "", artist: "" });
   const [file, setFile] = useState(null);
-
-  // Edit States
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({ title: "", artist: "" });
-
-  // Recommendations State
-  const [recommendations, setRecommendations] = useState([]);
 
   useEffect(() => {
     const init = async () => {
@@ -40,55 +44,49 @@ export default function Home() {
         navigate("/login");
       } else {
         fetchSongs();
-        fetchRecommendations();
       }
     };
     init();
   }, [navigate]);
 
-  // 1. FETCH ALL SONGS
   const fetchSongs = async () => {
     const { data, error } = await supabase.from("songs").select("*");
     if (error) console.error("Error fetching songs:", error);
     else setSongs(data);
   };
 
-  // 2. FETCH RECOMMENDATIONS (Replacing the localhost fetch)
-  // For now, this fetches other songs from your own table as "recommendations"
-  const fetchRecommendations = async () => {
-    const { data, error } = await supabase.from("songs").select("*").limit(5); // Adjust logic as needed
-
-    if (data) setRecommendations(data);
-  };
-
-  // 3. UPLOAD (Supabase Storage + DB)
   const handleUpload = async (e) => {
     e.preventDefault();
     if (!file) return;
 
     try {
-      // Get current user ID from session
       const {
         data: { session },
       } = await supabase.auth.getSession();
+      const userId = session.user.id;
+      const username = session.user.user_metadata?.username || "user";
 
-      const fileName = `${Date.now()}_${file.name}`;
+      // Define path: userId/username-tracks/timestamp_filename
+      const folderName = `${slugify(username)}-tracks`;
+      const filePath = `${userId}/${folderName}/${Date.now()}_${file.name}`;
+
       const { error: uploadError } = await supabase.storage
         .from("songs")
-        .upload(fileName, file);
+        .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       const { data: publicUrlData } = supabase.storage
         .from("songs")
-        .getPublicUrl(fileName);
+        .getPublicUrl(filePath);
 
       const { error: dbError } = await supabase.from("songs").insert([
         {
           title: form.title,
           artist: form.artist,
           song_url: publicUrlData.publicUrl,
-          owner_id: session.user.id, // Ensure this matches your column name
+          storage_path: filePath, // CRITICAL: This is the column we added via SQL
+          owner_id: userId,
         },
       ]);
 
@@ -96,85 +94,55 @@ export default function Home() {
 
       alert("Uploaded successfully!");
       setShowModal(false);
+      setFile(null);
+      setForm({ title: "", artist: "" });
       fetchSongs();
     } catch (err) {
       console.error("Upload Error:", err.message);
+      alert("Upload failed: " + err.message);
     }
   };
 
-  // 4. UPDATE (Supabase Database)
   const handleUpdate = async (songId) => {
     try {
       const { error } = await supabase
         .from("songs")
-        .update({
-          title: editForm.title,
-          artist: editForm.artist,
-        })
+        .update({ title: editForm.title, artist: editForm.artist })
         .eq("id", songId);
 
       if (error) throw error;
-
-      // Update the song in the local list
-      setSongs(
-        songs.map((s) =>
-          s.id === songId
-            ? { ...s, title: editForm.title, artist: editForm.artist }
-            : s,
-        ),
-      );
-
-      // ADD THIS BLOCK:
-      // If the song being edited is the one currently playing, update it in context
-      if (currentSong?.id === songId) {
-        setCurrentSong((prev) => ({
-          ...prev,
-          title: editForm.title,
-          artist: editForm.artist,
-        }));
-      }
-
+      setSongs(songs.map((s) => (s.id === songId ? { ...s, ...editForm } : s)));
       setEditingId(null);
-      alert("Updated successfully!");
     } catch (err) {
       console.error("Update Error:", err.message);
     }
   };
 
-  // 5. DELETE (Supabase Database + Storage)
-  const deleteSong = async (songId, songUrl) => {
+  const deleteSong = async (songId, storagePath) => {
     if (!window.confirm("Delete this track?")) return;
 
     try {
-      // 1. STOP if playing
-      if (currentSong?.id === songId) {
-        stopMusic();
-      }
+      if (currentSong?.id === songId) stopMusic();
 
-      // 2. Delete from DB
+      // Delete file from Storage
+      const { error: storageError } = await supabase.storage
+        .from("songs")
+        .remove([storagePath]);
+
+      if (storageError) throw storageError;
+
+      // Delete from DB
       const { error: dbError } = await supabase
         .from("songs")
         .delete()
         .eq("id", songId);
       if (dbError) throw dbError;
 
-      // 3. Delete from Storage
-      const fileName = songUrl.split("/").pop();
-      await supabase.storage.from("songs").remove([fileName]);
-
-      // 4. Update UI
       setSongs(songs.filter((s) => s.id !== songId));
-      alert("Song deleted!");
     } catch (err) {
       console.error("Delete Error:", err.message);
+      alert("Delete failed: " + err.message);
     }
-  };
-
-  const handleLogout = async () => {
-    saveProgress(); // Save progress to LocalStorage
-    stopMusic(); // Stop playback
-    await supabase.auth.signOut();
-    navigate("/login");
   };
 
   return (
@@ -264,7 +232,7 @@ export default function Home() {
                         </button>
                         <button
                           className="btn btn-link text-danger"
-                          onClick={() => deleteSong(s.id, s.song_url)}
+                          onClick={() => deleteSong(s.id, s.storage_path)}
                         >
                           <Trash2 size={18} />
                         </button>
