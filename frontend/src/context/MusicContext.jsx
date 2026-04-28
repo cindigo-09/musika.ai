@@ -1,77 +1,108 @@
-import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+} from "react";
 
 const MusicContext = createContext();
 
 export const MusicProvider = ({ children }) => {
-    const [songs, setSongs] = useState([]);
-    const [currentSong, setCurrentSong] = useState(null);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [currentTime, setCurrentTime] = useState(0);
-    const [duration, setDuration] = useState(0);
+  const [songs, setSongs] = useState([]);
+  const [currentSong, setCurrentSong] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
 
-    const audioRef = useRef(new Audio());
+  const audioRef = useRef(new Audio());
 
-    useEffect(() => {
-        const audio = audioRef.current;
-        const setAudioData = () => setDuration(audio.duration);
-        const setAudioTime = () => setCurrentTime(audio.currentTime);
+  // Handle playing the next song
+  const playNext = useCallback(() => {
+    if (songs.length === 0) return;
+    const idx = songs.findIndex((s) => s.id === currentSong?.id);
+    const next = idx !== -1 ? songs[(idx + 1) % songs.length] : songs[0];
+    playSong(next);
+  }, [songs, currentSong]);
 
-        audio.addEventListener("loadedmetadata", setAudioData);
-        audio.addEventListener("timeupdate", setAudioTime);
-        audio.addEventListener("ended", playNext);
+  // Handle playing the previous song
+  const playPrev = useCallback(() => {
+    if (songs.length === 0) return;
+    const idx = songs.findIndex((s) => s.id === currentSong?.id);
+    const prev = idx > 0 ? songs[idx - 1] : songs[songs.length - 1];
+    playSong(prev);
+  }, [songs, currentSong]);
 
-        return () => {
-            audio.removeEventListener("loadedmetadata", setAudioData);
-            audio.removeEventListener("timeupdate", setAudioTime);
-            audio.removeEventListener("ended", playNext);
-        };
-    }, [songs, currentSong]);
+  // Listen for audio events
+  useEffect(() => {
+    const audio = audioRef.current;
 
-    const playSong = (song) => {
-        if (currentSong?.song_id === song.song_id) {
-            isPlaying ? audioRef.current.pause() : audioRef.current.play();
-            setIsPlaying(!isPlaying);
+    const onLoadedMetadata = () => setDuration(audio.duration || 0);
+    const onTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const onEnded = () => playNext(); // Automatically play next
+
+    audio.addEventListener("loadedmetadata", onLoadedMetadata);
+    audio.addEventListener("timeupdate", onTimeUpdate);
+    audio.addEventListener("ended", onEnded);
+
+    return () => {
+      audio.removeEventListener("loadedmetadata", onLoadedMetadata);
+      audio.removeEventListener("timeupdate", onTimeUpdate);
+      audio.removeEventListener("ended", onEnded);
+    };
+  }, [playNext]); // Re-bind when playNext changes
+
+  const playSong = async (song) => {
+    if (!song || !song.song_url) return;
+
+    try {
+      if (currentSong?.id === song.id) {
+        if (isPlaying) {
+          audioRef.current.pause();
+          setIsPlaying(false);
         } else {
-            audioRef.current.pause();
-            audioRef.current.src = song.song_url.startsWith('http') ? song.song_url : `http://localhost:8080${song.song_url}`;
-            audioRef.current.load();
-            audioRef.current.play();
-            setCurrentSong(song);
-            setIsPlaying(true);
+          await audioRef.current.play();
+          setIsPlaying(true);
         }
-    };
+      } else {
+        audioRef.current.src = song.song_url;
+        audioRef.current.load();
+        await audioRef.current.play();
+        setCurrentSong(song);
+        setIsPlaying(true);
+      }
+    } catch (err) {
+      console.error("Playback failed:", err);
+      alert("Could not play audio. Ensure the file link is valid.");
+    }
+  };
 
-    const playNext = () => {
-        const idx = songs.findIndex(s => s.song_id === currentSong?.song_id);
-        if (idx !== -1) {
-            const next = songs[(idx + 1) % songs.length];
-            playSong(next);
-        }
-    };
+  const stopMusic = () => {
+    audioRef.current.pause();
+    audioRef.current.currentTime = 0;
+    setIsPlaying(false);
+  };
 
-    const playPrev = () => {
-        const idx = songs.findIndex(s => s.song_id === currentSong?.song_id);
-        if (idx !== -1) {
-            const prev = idx <= 0 ? songs[songs.length - 1] : songs[idx - 1];
-            playSong(prev);
-        }
-    };
-
-    const stopMusic = () => {
-        audioRef.current.pause();
-        audioRef.current.src = "";
-        setCurrentSong(null);
-        setIsPlaying(false);
-    };
-
-    return (
-        <MusicContext.Provider value={{ 
-            songs, setSongs, currentSong, isPlaying, playSong, 
-            playNext, playPrev, currentTime, duration, audioRef, stopMusic 
-        }}>
-            {children}
-        </MusicContext.Provider>
-    );
+  return (
+    <MusicContext.Provider
+      value={{
+        songs,
+        setSongs,
+        currentSong,
+        isPlaying,
+        playSong,
+        stopMusic,
+        playNext,
+        playPrev,
+        currentTime,
+        duration,
+        audioRef,
+      }}
+    >
+      {children}
+    </MusicContext.Provider>
+  );
 };
 
 export const useMusic = () => useContext(MusicContext);

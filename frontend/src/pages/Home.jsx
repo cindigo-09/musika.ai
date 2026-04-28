@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Plus, Music, Play, Pause, LogOut, Trash2, User, Edit2, Check, X
-} from "lucide-react";
+import { Plus, Play, Pause, Trash2, Edit2, Check, X } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { useMusic } from "../context/MusicContext";
 import Header from "../components/Header";
@@ -10,7 +8,16 @@ import Sidebar from "../components/Sidebar";
 
 export default function Home() {
   const navigate = useNavigate();
-  const { songs, setSongs, playSong, currentSong, isPlaying, stopMusic } = useMusic();
+  const {
+    songs,
+    setSongs,
+    playSong,
+    currentSong,
+    setCurrentSong,
+    isPlaying,
+    stopMusic,
+    saveProgress,
+  } = useMusic();
 
   // UI States
   const [showModal, setShowModal] = useState(false);
@@ -21,229 +28,297 @@ export default function Home() {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({ title: "", artist: "" });
 
-  // User States
-  const [userId, setUserId] = useState(null);
-  const [genre, setGenre] = useState(null);
+  // Recommendations State
   const [recommendations, setRecommendations] = useState([]);
 
   useEffect(() => {
-    const initUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setUserId(session.user.id);
-        fetchUserProfile(session.user.id);
-      } else {
+    const init = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
         navigate("/login");
+      } else {
+        fetchSongs();
+        fetchRecommendations();
       }
     };
-    initUser();
+    init();
   }, [navigate]);
 
-  const fetchUserProfile = async (uid) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('favorite_genre')
-        .eq('id', uid)
-        .single();
-      if (data && data.favorite_genre) {
-        setGenre(data.favorite_genre);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };  useEffect(() => {
-    if (userId) fetchSongs();
-  }, [userId]);
-
-  useEffect(() => {
-    if (genre) fetchRecommendations(genre);
-  }, [genre]);
-
-  const fetchRecommendations = async (userGenre) => {
-    try {
-      const res = await fetch(`http://localhost:8080/api/recommendations?genre=${userGenre}`);
-      if (res.ok) {
-        const data = await res.json();
-        const mapped = data.map(track => ({
-          song_id: `jamendo-${track.id}`,
-          title: track.name,
-          artist: track.artist_name,
-          song_url: track.audio
-        }));
-        setRecommendations(mapped);
-      }
-    } catch (err) {
-      console.error("Failed to fetch recommendations:", err);
-    }
-  };
-
+  // 1. FETCH ALL SONGS
   const fetchSongs = async () => {
-    try {
-      const res = await fetch(`http://localhost:8080/api/songs/${userId}`);
-      if (res.ok) setSongs(await res.json());
-    } catch (err) {
-      console.error("Failed to fetch songs:", err);
-    }
+    const { data, error } = await supabase.from("songs").select("*");
+    if (error) console.error("Error fetching songs:", error);
+    else setSongs(data);
   };
 
-  // 2. Handlers
+  // 2. FETCH RECOMMENDATIONS (Replacing the localhost fetch)
+  // For now, this fetches other songs from your own table as "recommendations"
+  const fetchRecommendations = async () => {
+    const { data, error } = await supabase.from("songs").select("*").limit(5); // Adjust logic as needed
+
+    if (data) setRecommendations(data);
+  };
+
+  // 3. UPLOAD (Supabase Storage + DB)
   const handleUpload = async (e) => {
     e.preventDefault();
-    const formData = new FormData();
-    formData.append("title", form.title);
-    formData.append("artist", form.artist);
-    formData.append("user_id", userId);
-    if (file) formData.append("mp3", file);
+    if (!file) return;
 
-    const res = await fetch("http://localhost:8080/api/songs", { method: "POST", body: formData });
-    if (res.ok) {
+    try {
+      // Get current user ID from session
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const fileName = `${Date.now()}_${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from("songs")
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from("songs")
+        .getPublicUrl(fileName);
+
+      const { error: dbError } = await supabase.from("songs").insert([
+        {
+          title: form.title,
+          artist: form.artist,
+          song_url: publicUrlData.publicUrl,
+          owner_id: session.user.id, // Ensure this matches your column name
+        },
+      ]);
+
+      if (dbError) throw dbError;
+
+      alert("Uploaded successfully!");
       setShowModal(false);
-      setForm({ title: "", artist: "" });
       fetchSongs();
+    } catch (err) {
+      console.error("Upload Error:", err.message);
     }
   };
 
+  // 4. UPDATE (Supabase Database)
   const handleUpdate = async (songId) => {
-    const res = await fetch(`http://localhost:8080/api/songs/${songId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(editForm),
-    });
-    if (res.ok) { setEditingId(null); fetchSongs(); }
+    try {
+      const { error } = await supabase
+        .from("songs")
+        .update({
+          title: editForm.title,
+          artist: editForm.artist,
+        })
+        .eq("id", songId);
+
+      if (error) throw error;
+
+      // Update the song in the local list
+      setSongs(
+        songs.map((s) =>
+          s.id === songId
+            ? { ...s, title: editForm.title, artist: editForm.artist }
+            : s,
+        ),
+      );
+
+      // ADD THIS BLOCK:
+      // If the song being edited is the one currently playing, update it in context
+      if (currentSong?.id === songId) {
+        setCurrentSong((prev) => ({
+          ...prev,
+          title: editForm.title,
+          artist: editForm.artist,
+        }));
+      }
+
+      setEditingId(null);
+      alert("Updated successfully!");
+    } catch (err) {
+      console.error("Update Error:", err.message);
+    }
   };
 
-  const deleteSong = async (songId) => {
+  // 5. DELETE (Supabase Database + Storage)
+  const deleteSong = async (songId, songUrl) => {
     if (!window.confirm("Delete this track?")) return;
-    const res = await fetch(`http://localhost:8080/api/songs/${songId}`, { method: "DELETE" });
-    if (res.ok) fetchSongs();
+
+    try {
+      // 1. STOP if playing
+      if (currentSong?.id === songId) {
+        stopMusic();
+      }
+
+      // 2. Delete from DB
+      const { error: dbError } = await supabase
+        .from("songs")
+        .delete()
+        .eq("id", songId);
+      if (dbError) throw dbError;
+
+      // 3. Delete from Storage
+      const fileName = songUrl.split("/").pop();
+      await supabase.storage.from("songs").remove([fileName]);
+
+      // 4. Update UI
+      setSongs(songs.filter((s) => s.id !== songId));
+      alert("Song deleted!");
+    } catch (err) {
+      console.error("Delete Error:", err.message);
+    }
   };
 
   const handleLogout = async () => {
-    stopMusic(); // Crucial: Stop global audio before logout
+    saveProgress(); // Save progress to LocalStorage
+    stopMusic(); // Stop playback
     await supabase.auth.signOut();
-    localStorage.clear();
     navigate("/login");
   };
 
   return (
-    <div className="d-flex flex-column vh-100 vw-100 text-white overflow-hidden" style={{ background: "#050508" }}>
-      {/* HEADER */}
+    <div
+      className="d-flex flex-column vh-100 vw-100 text-white"
+      style={{ background: "#050508" }}
+    >
       <Header />
-
       <div className="d-flex flex-grow-1 overflow-hidden">
-        {/* SIDEBAR */}
         <Sidebar />
-        {/* MAIN LIBRARY */}
-        <main className="flex-grow-1 p-3 p-md-5 overflow-auto custom-scrollbar">
+        <main className="flex-grow-1 p-5 overflow-auto custom-scrollbar">
           <div className="d-flex justify-content-between align-items-center mb-4">
             <h2 className="display-6 m-0">Your Library</h2>
-            <button className="btn btn-warning rounded-pill px-4 fw-bold shadow" onClick={() => setShowModal(true)}>
-              <Plus size={20} className="me-2" /> ADD TRACK
+            <button
+              className="btn btn-warning rounded-pill px-4"
+              onClick={() => setShowModal(true)}
+            >
+              + ADD TRACK
             </button>
           </div>
 
-          <div className="musika-card rounded overflow-hidden shadow-lg border border-secondary border-opacity-25">
-            <table className="table table-dark table-hover m-0">
-              <thead>
-                <tr className="text-secondary small">
-                  <th className="ps-4 py-3">TRACK INFO</th>
-                  <th className="text-end pe-4 py-3">ACTION</th>
-                </tr>
-              </thead>
-              <tbody>
-                {songs.map((s) => (
-                  <tr key={s.song_id} className="align-middle">
-                    <td className="ps-4">
-                      {editingId === s.song_id ? (
-                        <div className="d-flex flex-column gap-1 py-2">
-                          <input className="musika-input" value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} />
-                          <input className="musika-input small opacity-75" value={editForm.artist} onChange={e => setEditForm({ ...editForm, artist: e.target.value })} />
-                        </div>
+          <table className="table table-dark table-hover">
+            <tbody>
+              {songs.map((s) => (
+                <tr key={s.id} className="align-middle">
+                  <td>
+                    {editingId === s.id ? (
+                      <div className="d-flex flex-column gap-1">
+                        <input
+                          value={editForm.title}
+                          className="musika-input"
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, title: e.target.value })
+                          }
+                        />
+                        <input
+                          value={editForm.artist}
+                          className="musika-input small"
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, artist: e.target.value })
+                          }
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <div className="text-warning fw-bold">{s.title}</div>
+                        <div className="small text-white-50">{s.artist}</div>
+                      </>
+                    )}
+                  </td>
+                  <td className="text-end">
+                    <button
+                      className="btn btn-link text-warning"
+                      onClick={() => playSong(s)}
+                    >
+                      {currentSong?.id === s.id && isPlaying ? (
+                        <Pause size={20} />
                       ) : (
-                        <>
-                          <div className="text-warning fw-bold">{s.title}</div>
-                          <div className="small text-white-50">{s.artist}</div>
-                        </>
+                        <Play size={20} />
                       )}
-                    </td>
-                    <td className="text-end pe-4">
-                      <div className="d-flex justify-content-end align-items-center gap-3">
-                        <button className="btn btn-link text-warning p-0" onClick={() => playSong(s)}>
-                          {currentSong?.song_id === s.song_id && isPlaying ? <Pause size={24} /> : <Play size={24} />}
+                    </button>
+                    {editingId === s.id ? (
+                      <>
+                        <button
+                          className="btn btn-link text-success"
+                          onClick={() => handleUpdate(s.id)}
+                        >
+                          <Check size={20} />
                         </button>
-                        {editingId === s.song_id ? (
-                          <>
-                            <button className="btn btn-link text-success p-0" onClick={() => handleUpdate(s.song_id)}><Check size={20} /></button>
-                            <button className="btn btn-link text-secondary p-0" onClick={() => setEditingId(null)}><X size={20} /></button>
-                          </>
-                        ) : (
-                          <>
-                            <button className="btn btn-link text-info p-0 opacity-50" onClick={() => { setEditingId(s.song_id); setEditForm({ title: s.title, artist: s.artist }); }}><Edit2 size={18} /></button>
-                            <button className="btn btn-link text-danger p-0 opacity-50" onClick={() => deleteSong(s.song_id)}><Trash2 size={18} /></button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="d-flex justify-content-between align-items-center mt-5 mb-4">
-            <h2 className="display-6 m-0">Recommended for You <span className="fs-5 text-muted">({genre || 'Loading...'})</span></h2>
-          </div>
-
-          <div className="musika-card rounded overflow-hidden shadow-lg border border-secondary border-opacity-25">
-            <table className="table table-dark table-hover m-0">
-              <thead>
-                <tr className="text-secondary small">
-                  <th className="ps-4 py-3">TRACK INFO</th>
-                  <th className="text-end pe-4 py-3">ACTION</th>
+                        <button
+                          className="btn btn-link text-secondary"
+                          onClick={() => setEditingId(null)}
+                        >
+                          <X size={20} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          className="btn btn-link text-info"
+                          onClick={() => {
+                            setEditingId(s.id);
+                            setEditForm({ title: s.title, artist: s.artist });
+                          }}
+                        >
+                          <Edit2 size={18} />
+                        </button>
+                        <button
+                          className="btn btn-link text-danger"
+                          onClick={() => deleteSong(s.id, s.song_url)}
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </>
+                    )}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {recommendations.map((s) => (
-                  <tr key={s.song_id} className="align-middle">
-                    <td className="ps-4">
-                      <div className="text-warning fw-bold">{s.title}</div>
-                      <div className="small text-white-50">{s.artist}</div>
-                    </td>
-                    <td className="text-end pe-4">
-                      <div className="d-flex justify-content-end align-items-center gap-3">
-                        <button className="btn btn-link text-warning p-0" onClick={() => playSong(s)}>
-                          {currentSong?.song_id === s.song_id && isPlaying ? <Pause size={24} /> : <Play size={24} />}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {recommendations.length === 0 && (
-                  <tr>
-                    <td colSpan="2" className="text-center py-4 text-white-50">
-                      Loading recommendations or no tracks found...
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </main>
       </div>
 
-      {/* UPLOAD MODAL */}
       {showModal && (
-        <div className="position-fixed top-0 start-0 w-100 vh-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: "rgba(0,0,0,0.85)", zIndex: 1050 }}>
-          <div className="musika-card p-4 border-warning shadow-lg" style={{ width: "100%", maxWidth: "450px" }}>
+        <div
+          className="position-fixed top-0 start-0 w-100 vh-100 d-flex align-items-center justify-content-center"
+          style={{ backgroundColor: "rgba(0,0,0,0.85)", zIndex: 1050 }}
+        >
+          <div
+            className="musika-card p-4 border-warning"
+            style={{ width: "450px" }}
+          >
             <h5 className="text-warning mb-4 fw-bold">UPLOAD TRACK</h5>
             <form onSubmit={handleUpload}>
-              <input type="text" placeholder="Title" className="form-control musika-input mb-3" required onChange={e => setForm({ ...form, title: e.target.value })} />
-              <input type="text" placeholder="Artist" className="form-control musika-input mb-3" required onChange={e => setForm({ ...form, artist: e.target.value })} />
-              <input type="file" accept=".mp3" className="form-control musika-input mb-4" required onChange={e => setFile(e.target.files[0])} />
+              <input
+                type="text"
+                placeholder="Title"
+                className="form-control musika-input mb-3"
+                required
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+              />
+              <input
+                type="text"
+                placeholder="Artist"
+                className="form-control musika-input mb-3"
+                required
+                onChange={(e) => setForm({ ...form, artist: e.target.value })}
+              />
+              <input
+                type="file"
+                accept=".mp3"
+                className="form-control musika-input mb-4"
+                required
+                onChange={(e) => setFile(e.target.files[0])}
+              />
               <div className="d-flex gap-2">
-                <button className="btn btn-warning w-100 fw-bold">UPLOAD</button>
-                <button type="button" className="btn btn-outline-secondary px-4" onClick={() => setShowModal(false)}>CANCEL</button>
+                <button className="btn btn-warning w-100">UPLOAD</button>
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  onClick={() => setShowModal(false)}
+                >
+                  CANCEL
+                </button>
               </div>
             </form>
           </div>
