@@ -1,22 +1,28 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-// 1. Import the supabase client
 import { supabase } from "../supabaseClient";
 
 export default function Register() {
   const [genres, setGenres] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingGenres, setLoadingGenres] = useState(true);
   const navigate = useNavigate();
 
-  // Load genres efficiently and handle possible errors gracefully
+  // Load genres from the database
   useEffect(() => {
     const fetchGenres = async () => {
       try {
-        const { data, error } = await supabase.from('genres').select('genre_name');
+        // FIXED: Using 'genre_name' to match your column update
+        const { data, error } = await supabase
+          .from("genres")
+          .select("genre_name");
+
         if (error) throw error;
         if (data) setGenres(data);
       } catch (err) {
         console.error("Failed to fetch genres:", err);
+      } finally {
+        setLoadingGenres(false);
       }
     };
     fetchGenres();
@@ -24,52 +30,43 @@ export default function Register() {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    // Use FormData to prevent excessive React state re-renders on every keystroke
-    const formData = new FormData(e.target);
-    const username = formData.get("username");
-    const age = parseInt(formData.get("age"));
-    const email = formData.get("email");
-    const genre = formData.get("genre");
-    const password = formData.get("password");
-    const confirmPassword = formData.get("confirmPassword");
-
-    if (age < 0) return alert("Age cannot be negative.");
-    if (password !== confirmPassword) return alert("Passwords do not match!");
-
     setLoading(true);
 
+    const formData = new FormData(e.target);
+    const email = formData.get("email");
+    const password = formData.get("password");
+    const confirmPassword = formData.get("confirmPassword");
+    const username = formData.get("username");
+    const age = formData.get("age");
+    const genre = formData.get("genre");
+
+    if (password !== confirmPassword) {
+      alert("Passwords do not match!");
+      setLoading(false);
+      return;
+    }
+
     try {
-      // 2. Register the user in Supabase Auth
-      const { data, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
+      const { data, error } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+          data: {
+            username: username,
+            age: age,
+            genre: genre,
+          },
+        },
       });
 
-      if (authError) throw authError;
+      if (error) throw error;
 
-      // 3. Save extra info to our 'profiles' table
-      if (data.user) {
-        // 3. Save extra info to our 'profiles' table via backend
-        const response = await fetch(`http://localhost:8080/api/user/${data.user.id}/profile`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username,
-            age,
-            favorite_genre: genre
-          })
-        });
-
-        if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.error || "Failed to save profile details");
-        }
-      }
-
-      alert("Registration Complete! Check your email for a verification link.");
+      alert(
+        "Registration successful! Check your email to confirm your account.",
+      );
       navigate("/login");
-    } catch (error) {
-      alert(error.message);
+    } catch (err) {
+      alert(err.message);
     } finally {
       setLoading(false);
     }
@@ -79,7 +76,6 @@ export default function Register() {
     <div className="auth-page-wrapper">
       <div className="container-fluid">
         <div className="row g-0">
-          {/* Left Side: Brand Section */}
           <div className="col-md-6 d-flex flex-column justify-content-center align-items-center text-center p-5">
             <h1 className="page-title display-4">MUSIKA AI</h1>
             <p className="text-white opacity-75 font-italic mt-3">
@@ -87,10 +83,12 @@ export default function Register() {
             </p>
           </div>
 
-          {/* Right Side: Form Section */}
           <div className="col-md-6 d-flex justify-content-center align-items-center">
             <div className="card musika-card p-5" style={{ width: "480px" }}>
-              <h3 className="mb-5 text-center" style={{ color: "var(--mana-gold)", letterSpacing: "4px" }}>
+              <h3
+                className="mb-5 text-center"
+                style={{ color: "var(--mana-gold)", letterSpacing: "4px" }}
+              >
                 REGISTER
               </h3>
               <form onSubmit={handleRegister}>
@@ -114,6 +112,7 @@ export default function Register() {
                     />
                   </div>
                 </div>
+
                 <div className="mb-4">
                   <input
                     type="email"
@@ -123,48 +122,62 @@ export default function Register() {
                     required
                   />
                 </div>
+
                 <div className="mb-4">
                   <input
                     list="genre-list"
                     name="genre"
-                    placeholder="GENRE"
+                    placeholder={
+                      loadingGenres ? "Loading Genres..." : "SELECT GENRE"
+                    }
                     className="form-control musika-input"
                     required
+                    disabled={loadingGenres}
+                    autoComplete="off"
                   />
+                  {/* FIXED: Mapped to g.genre_name instead of g.name */}
                   <datalist id="genre-list">
                     {genres.map((g, i) => (
                       <option key={i} value={g.genre_name} />
                     ))}
                   </datalist>
                 </div>
+
                 <div className="mb-4">
                   <input
                     type="password"
                     name="password"
-                    placeholder="CIPHER (PASSWORD)"
+                    placeholder="PASSWORD"
                     className="form-control musika-input"
                     required
                   />
                 </div>
-                <div className="mb-5">
+                <div className="mb-4">
                   <input
                     type="password"
                     name="confirmPassword"
-                    placeholder="CONFIRM CIPHER"
+                    placeholder="CONFIRM PASSWORD"
                     className="form-control musika-input"
                     required
                   />
                 </div>
+
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || loadingGenres}
                   className="btn w-100 py-3"
-                  style={{ border: "1px solid var(--mana-gold)", color: "var(--mana-gold)" }}
+                  style={{
+                    border: "1px solid var(--mana-gold)",
+                    color: "var(--mana-gold)",
+                  }}
                 >
-                  {loading ? "Creating Account..." : "Register"}
+                  {loading ? "Creating Account..." : "REGISTER"}
                 </button>
               </form>
-              <Link to="/login" className="mt-4 text-center small text-white-50 text-decoration-none">
+              <Link
+                to="/login"
+                className="mt-4 text-center small text-white-50 text-decoration-none"
+              >
                 Existing User? Login.
               </Link>
             </div>
