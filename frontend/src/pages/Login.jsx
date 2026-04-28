@@ -68,6 +68,7 @@ export default function Login() {
                     required
                   />
                 </div>
+
                 <div className="mb-4 position-relative">
                   <input
                     type={showPassword ? "text" : "password"}
@@ -79,14 +80,28 @@ export default function Login() {
                     }
                     required
                   />
-                  <span
-                    className="password-toggle-eye"
-                    style={{ cursor: "pointer", position: "absolute", right: "15px", top: "12px" }}
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </span>
+
+                  {/* The eye icon will only render if there is text in the password field */}
+                  {form.password.length > 0 && (
+                    <span
+                      className="password-toggle-eye"
+                      style={{
+                        cursor: "pointer",
+                        position: "absolute",
+                        right: "15px",
+                        top: "12px",
+                      }}
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff size={18} color="white" />
+                      ) : (
+                        <Eye size={18} color="white" />
+                      )}
+                    </span>
+                  )}
                 </div>
+
                 <button
                   type="submit"
                   disabled={loading}
