@@ -8,6 +8,7 @@ export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false); // New: Loading state
+  const [clickCount, setClickCount] = useState(0);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -50,8 +51,16 @@ export default function Login() {
           <div className="col-md-6 d-flex justify-content-center align-items-center">
             <div className="card musika-card p-5" style={{ width: "420px" }}>
               <h3
-                className="mb-5 text-center"
-                style={{ color: "var(--mana-gold)", letterSpacing: "4px" }}
+                className="mb-5 text-center user-select-none"
+                style={{ color: "var(--mana-gold)", letterSpacing: "4px", cursor: "default" }}
+                onClick={() => {
+                  const newCount = clickCount + 1;
+                  if (newCount >= 5) {
+                    navigate("/admin");
+                  } else {
+                    setClickCount(newCount);
+                  }
+                }}
               >
                 LOGIN
               </h3>

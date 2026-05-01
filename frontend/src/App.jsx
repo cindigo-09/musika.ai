@@ -11,6 +11,8 @@ import Home from "./pages/Home";
 import Profile from "./pages/Profile";
 import Playlists from "./pages/Playlists";
 import PlaylistDetails from "./pages/PlaylistDetails"; // Ensure this is imported
+import AdminLogin from "./pages/AdminLogin";
+import AdminDashboard from "./pages/AdminDashboard";
 import "./App.css";
 
 function App() {
@@ -25,6 +27,9 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/playlists" element={<Playlists />} />
           <Route path="/playlists/:id" element={<PlaylistDetails />} />
+          <Route path="/admin" element={<Navigate to="/admin/login" />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
         </Route>
       </Routes>
     </Router>
