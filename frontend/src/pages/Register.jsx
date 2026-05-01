@@ -61,6 +61,24 @@ export default function Register() {
 
       if (error) throw error;
 
+      // Create the profile in the database via the local backend (bypassing RLS)
+      if (data?.user) {
+        try {
+          await fetch(`http://localhost:8080/api/user/${data.user.id}/profile`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              username: username,
+              age: parseInt(age, 10),
+              favorite_genre: genre,
+              bio: ""
+            }),
+          });
+        } catch (fetchErr) {
+          console.error("Profile creation failed, but user registered:", fetchErr);
+        }
+      }
+
       alert(
         "Registration successful! Check your email to confirm your account.",
       );

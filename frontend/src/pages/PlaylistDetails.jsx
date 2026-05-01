@@ -11,8 +11,7 @@ import {
   Loader2,
   Plus,
   Search,
-  ChevronUp,
-  ChevronDown,
+  Heart,
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { useMusic } from "../context/MusicContext";
@@ -34,10 +33,42 @@ export default function PlaylistDetails() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
+  const [editingSong, setEditingSong] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  const [favoriteSongIds, setFavoriteSongIds] = useState(new Set());
 
   useEffect(() => {
     fetchPlaylistData();
+    fetchFavorites();
   }, [id]);
+
+  const fetchFavorites = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      const { data: favPlaylist } = await supabase
+        .from("playlists")
+        .select("id")
+        .eq("user_id", session.user.id)
+        .eq("name", "Favorites")
+        .single();
+        
+      if (favPlaylist) {
+        const { data: favSongs } = await supabase
+          .from("playlist_songs")
+          .select("song_id")
+          .eq("playlist_id", favPlaylist.id);
+        
+        if (favSongs) {
+          setFavoriteSongIds(new Set(favSongs.map(s => s.song_id)));
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const fetchPlaylistData = async () => {
     setLoading(true);
@@ -59,6 +90,8 @@ export default function PlaylistDetails() {
         .from("playlist_songs")
         .select(
           `
+        playlist_id,
+        song_id,
         order_index,
         songs (
           id,
@@ -89,50 +122,143 @@ export default function PlaylistDetails() {
 
   const handleDeletePlaylist = async () => {
     if (window.confirm("Are you sure? This will delete the entire playlist.")) {
-      await supabase.from("playlists").delete().eq("id", id);
-      navigate("/playlists");
+      await supabase.from("playlist_songs").delete().eq("playlist_id", id);
+      const { error } = await supabase.from("playlists").delete().eq("id", id);
+      if (error) {
+        alert("Error deleting playlist: " + error.message);
+      } else {
+        navigate("/playlists");
+      }
     }
   };
 
+  const handleUpdateMeta = async () => {
+    const { error } = await supabase
+      .from("playlists")
+      .update({ name: editForm.name, description: editForm.description })
+      .eq("id", id);
+
+    if (error) {
+      alert("Error updating playlist: " + error.message);
+    } else {
+      setPlaylist({ ...playlist, name: editForm.name, description: editForm.description });
+      setIsEditing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showAddModal) {
+      handleSearch("");
+    }
+  }, [showAddModal]);
+
   const handleSearch = async (q) => {
     setSearchQuery(q);
-    if (q.length < 2) return setSearchResults([]);
-    const { data } = await supabase
-      .from("songs")
-      .select("*")
-      .ilike("title", `%${q}%`)
-      .limit(5);
+    let query = supabase.from("songs").select("*").limit(50);
+    if (q) {
+      query = query.ilike("title", `%${q}%`);
+    }
+    const { data } = await query;
     setSearchResults(data || []);
   };
 
   const addSongToPlaylist = async (songId) => {
-    await supabase.from("playlist_songs").insert([
+    const { error } = await supabase.from("playlist_songs").insert([
       {
         playlist_id: id,
         song_id: songId,
         order_index: playlistSongs.length,
       },
     ]);
+    if (error) {
+      alert("Error adding song: " + error.message);
+      return;
+    }
     fetchPlaylistData(); // Refresh list
     setShowAddModal(false);
     setSearchQuery("");
   };
 
-  const moveSong = async (idx, dir) => {
-    const newSongs = [...playlistSongs];
-    const target = dir === "up" ? idx - 1 : idx + 1;
-    if (target < 0 || target >= newSongs.length) return;
+  const handleUpdateSong = async (e) => {
+    e.preventDefault();
+    if (!editingSong) return;
+    const { error } = await supabase
+      .from("songs")
+      .update({ title: editingSong.title, artist: editingSong.artist })
+      .eq("id", editingSong.id);
 
-    [newSongs[idx], newSongs[target]] = [newSongs[target], newSongs[idx]];
-    setPlaylistSongs(newSongs);
+    if (!error) {
+      setPlaylistSongs((prev) =>
+        prev.map((item) =>
+          item.songs.id === editingSong.id
+            ? { ...item, songs: { ...item.songs, title: editingSong.title, artist: editingSong.artist } }
+            : item
+        )
+      );
+      setShowEditModal(false);
+      setEditingSong(null);
+    } else {
+      alert("Error updating track: " + error.message);
+    }
+  };
 
-    const updates = newSongs.map((s, i) => ({
-      id: s.id,
-      playlist_id: id,
-      song_id: s.songs.id,
-      order_index: i,
-    }));
-    await supabase.from("playlist_songs").upsert(updates);
+  const handleFavorite = async (songId) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      let { data: favPlaylist } = await supabase
+        .from("playlists")
+        .select("id")
+        .eq("user_id", session.user.id)
+        .eq("name", "Favorites")
+        .single();
+        
+      if (!favPlaylist) {
+        const { data, error: createErr } = await supabase
+          .from("playlists")
+          .insert([{ name: "Favorites", user_id: session.user.id, description: "Your favorite tracks." }])
+          .select()
+          .single();
+        if (createErr) throw createErr;
+        favPlaylist = data;
+      }
+      
+      if (favoriteSongIds.has(songId)) {
+        // Remove from favorites
+        const { error } = await supabase
+          .from("playlist_songs")
+          .delete()
+          .match({ playlist_id: favPlaylist.id, song_id: songId });
+          
+        if (!error) {
+          const newSet = new Set(favoriteSongIds);
+          newSet.delete(songId);
+          setFavoriteSongIds(newSet);
+          
+          if (favPlaylist.id === id) {
+            setPlaylistSongs((prev) => prev.filter((item) => item.songs.id !== songId));
+          }
+          
+          alert("Removed from Favorites");
+        }
+      } else {
+        // Add to favorites
+        const { error } = await supabase
+          .from("playlist_songs")
+          .insert([{ playlist_id: favPlaylist.id, song_id: songId }]);
+          
+        if (!error) {
+          const newSet = new Set(favoriteSongIds);
+          newSet.add(songId);
+          setFavoriteSongIds(newSet);
+          alert("Added to Favorites!");
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update favorites");
+    }
   };
 
   if (loading)
@@ -250,14 +376,13 @@ export default function PlaylistDetails() {
                 <th style={{ width: "50px" }}>#</th>
                 <th>Title</th>
                 <th>Artist</th>
-                <th className="text-center">Order</th>
-                <th className="text-end px-4">Action</th>
+                <th className="text-end px-4">Actions</th>
               </tr>
             </thead>
             <tbody>
               {playlistSongs.length > 0 ? (
                 playlistSongs.map((item, idx) => (
-                  <tr key={item.id} className="align-middle">
+                  <tr key={item.song_id} className="align-middle" onClick={() => playSong(item.songs)} style={{ cursor: "pointer" }}>
                     <td className="text-secondary">{idx + 1}</td>
                     <td
                       className={`fw-bold ${currentSong?.id === item.songs.id ? "text-warning" : "text-white"}`}
@@ -265,43 +390,48 @@ export default function PlaylistDetails() {
                       {item.songs.title}
                     </td>
                     <td className="text-secondary">{item.songs.artist}</td>
-                    <td className="text-center">
-                      <button
-                        className="btn btn-link text-secondary p-0 me-2"
-                        onClick={() => moveSong(idx, "up")}
-                        disabled={idx === 0}
-                      >
-                        <ChevronUp size={18} />
-                      </button>
-                      <button
-                        className="btn btn-link text-secondary p-0"
-                        onClick={() => moveSong(idx, "down")}
-                        disabled={idx === playlistSongs.length - 1}
-                      >
-                        <ChevronDown size={18} />
-                      </button>
-                    </td>
                     <td className="text-end px-4">
                       <button
-                        className="btn btn-link text-danger p-0"
-                        onClick={async () => {
+                        className="btn btn-link text-info p-0 me-3"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingSong(item.songs);
+                          setShowEditModal(true);
+                        }}
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        className="btn btn-link text-danger p-0 me-3"
+                        onClick={async (e) => {
+                          e.stopPropagation();
                           await supabase
                             .from("playlist_songs")
                             .delete()
-                            .eq("id", item.id);
+                            .match({ playlist_id: id, song_id: item.songs.id });
                           setPlaylistSongs(
-                            playlistSongs.filter((s) => s.id !== item.id),
+                            playlistSongs.filter((s) => s.songs.id !== item.songs.id),
                           );
                         }}
                       >
                         <Trash2 size={18} />
+                      </button>
+                      <button
+                        className="btn btn-link p-0"
+                        onClick={(e) => { e.stopPropagation(); handleFavorite(item.songs.id); }}
+                      >
+                        <Heart 
+                          size={18} 
+                          fill={favoriteSongIds.has(item.songs.id) ? "currentColor" : "none"} 
+                          className={favoriteSongIds.has(item.songs.id) ? "text-danger" : "text-secondary"} 
+                        />
                       </button>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" className="text-center py-5 text-secondary">
+                  <td colSpan="4" className="text-center py-5 text-secondary">
                     No songs in this playlist yet. Use the "Add Song" button to
                     start building it!
                   </td>
@@ -335,19 +465,33 @@ export default function PlaylistDetails() {
                 <X size={20} />
               </button>
             </div>
-            <div className="position-relative mb-4">
-              <Search
-                className="position-absolute top-50 start-0 translate-middle-y ms-3 text-secondary"
-                size={18}
-              />
+
+            {/* FIXED SEARCH INPUT SECTION */}
+            <div className="mb-4">
+              {/* Wrap icon in a div to ensure it stays on top and centered */}
+              <div
+                className="position-absolute d-flex align-items-center h-100"
+                style={{ left: '15px', zIndex: 10, pointerEvents: 'none' }}
+              >
+                <Search className="text-secondary" size={18} />
+              </div>
+
               <input
-                className="form-control musika-input ps-5"
+                className="form-control musika-input"
+                style={{
+                  paddingLeft: "3.2rem !important", // Use !important if your CSS is stubborn
+                  backgroundColor: "#1a1a1f",
+                  color: "#fff",
+                  border: "1px solid #333",
+                  height: "45px" // Consistent height helps alignment
+                }}
                 placeholder="Type song title..."
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
                 autoFocus
               />
             </div>
+
             <div
               className="list-group list-group-flush mb-3 overflow-auto custom-scrollbar"
               style={{ maxHeight: "300px" }}
@@ -368,10 +512,55 @@ export default function PlaylistDetails() {
                 ))
               ) : (
                 <p className="text-center text-secondary small py-3">
-                  Type to search your library...
+                  {searchQuery ? "No songs found." : "No songs available in library."}
                 </p>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div
+          className="position-fixed top-0 start-0 w-100 vh-100 d-flex align-items-center justify-content-center"
+          style={{ backgroundColor: "rgba(0,0,0,0.85)", zIndex: 1100 }}
+        >
+          <div
+            className="musika-card p-4"
+            style={{
+              width: "400px",
+              background: "#121216",
+              border: "1px solid #0dcaf0",
+            }}
+          >
+            <h5 className="text-info mb-4 fw-bold">EDIT TRACK</h5>
+            <form onSubmit={handleUpdateSong}>
+              <input
+                className="form-control musika-input mb-3"
+                value={editingSong.title}
+                onChange={(e) =>
+                  setEditingSong({ ...editingSong, title: e.target.value })
+                }
+              />
+              <input
+                className="form-control musika-input mb-4"
+                value={editingSong.artist}
+                onChange={(e) =>
+                  setEditingSong({ ...editingSong, artist: e.target.value })
+                }
+              />
+              <div className="d-flex gap-2">
+                <button className="btn btn-info w-100 fw-bold">SAVE</button>
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary w-100"
+                  onClick={() => setShowEditModal(false)}
+                >
+                  CANCEL
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

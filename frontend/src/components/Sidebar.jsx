@@ -4,7 +4,7 @@ import {
     Music,
     User,
     FolderKanban,
-
+    ShieldAlert,
 } from "lucide-react";
 
 function Sidebar() {
@@ -32,6 +32,14 @@ function Sidebar() {
             >
                 <User size={18} /> Profile
             </button>
+            {/* <div className="mt-auto pt-5">
+                <button
+                    className="btn btn-outline-info w-100 fw-bold shadow-sm"
+                    onClick={() => navigate('/admin')}
+                >
+                    <ShieldAlert size={18} /> Admin Panel
+                </button>
+            </div> */}
 
         </aside>
     );
