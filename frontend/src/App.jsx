@@ -10,7 +10,7 @@ import Register from "./pages/Register";
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
 import Playlists from "./pages/Playlists";
-import Trial from "./pages/Trial";
+import PlaylistDetails from "./pages/PlaylistDetails"; // Ensure this is imported
 import "./App.css";
 
 function App() {
@@ -24,6 +24,7 @@ function App() {
           <Route path="/home" element={<Home />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/playlists" element={<Playlists />} />
+          <Route path="/playlists/:id" element={<PlaylistDetails />} />
         </Route>
       </Routes>
     </Router>

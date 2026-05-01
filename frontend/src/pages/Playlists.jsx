@@ -1,89 +1,192 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Play } from "lucide-react";
+import { Plus, Music, Loader2, Play, AlertCircle } from "lucide-react";
+import { supabase } from "../supabaseClient";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 
 export default function Playlists() {
-    const navigate = useNavigate();
-    const [showModal, setShowModal] = useState(false);
+  const navigate = useNavigate();
+  const [playlists, setPlaylists] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [name, setName] = useState("");
+  const [error, setError] = useState(null);
 
-    // Dummy data for visualization
-    const dummyPlaylists = [
-        { id: 1, name: "Chill Lo-fi", tracks: 24, cover: "https://picsum.photos/seed/1/300" },
-        { id: 2, name: "Gym Pump", tracks: 15, cover: "https://picsum.photos/seed/2/300" },
-        { id: 3, name: "Coding Focus", tracks: 42, cover: "https://picsum.photos/seed/3/300" },
-        { id: 4, name: "Midnight City", tracks: 10, cover: "https://picsum.photos/seed/4/300" },
-        { id: 5, name: "Daily Mix 1", tracks: 50, cover: "https://picsum.photos/seed/5/300" },
-    ];
+  useEffect(() => {
+    fetchPlaylists();
+  }, []);
 
-    return (
-        <div className="d-flex flex-column vh-100 vw-100 text-white overflow-hidden" style={{ background: "#050508" }}>
-            <Header />
-            <div className="container-fluid p-0 text-light d-flex flex-grow-1">
-                <Sidebar />
+  // Inside fetchPlaylists in Playlists.jsx
+  const fetchPlaylists = async () => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return setLoading(false);
 
-                <main className="flex-grow-1 overflow-auto p-4" style={{ backgroundColor: '#050508' }}>
-                    <div className="d-flex justify-content-between align-items-center mb-4">
-                        <h2 className="display-6 m-0 fw-bold">My Playlists</h2>
-                        <button className="btn btn-warning rounded-pill px-4 fw-bold shadow-sm" onClick={() => setShowModal(true)}>
-                            <Plus size={20} className="me-2" /> ADD PLAYLISTS
-                        </button>
-                    </div>
+      const { data, error: fetchError } = await supabase
+        .from("playlists")
+        .select(
+          `
+        *,
+        playlist_songs (playlist_id) 
+      `,
+        ) // We use playlist_id because 'id' doesn't exist in your junction table
+        .eq("user_id", session.user.id)
+        .order("created_at", { ascending: false });
 
-                    {/* Playlist Grid */}
-                    <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5 g-4">
-                        {dummyPlaylists.map((playlist) => (
-                            <div key={playlist.id} className="col">
-                                <div
-                                    className="card h-100 border-0 p-3 shadow-lg playlist-card"
-                                    style={{
-                                        backgroundColor: "#121216",
-                                        borderRadius: "12px",
-                                        transition: "background 0.3s ease",
-                                        cursor: "pointer"
-                                    }}
-                                >
-                                    <div className="position-relative overflow-hidden rounded-3 mb-3 aspect-ratio-1x1">
-                                        <img
-                                            src={playlist.cover}
-                                            className="card-img-top shadow"
-                                            alt={playlist.name}
-                                            style={{ objectFit: "cover", aspectRatio: "1/1" }}
-                                        />
-                                        {/* Play Button Hover Overlay */}
-                                        <div className="play-button-overlay position-absolute bottom-0 end-0 m-2">
-                                            <button className="btn btn-warning rounded-circle p-3 shadow shadow-lg">
-                                                <Play fill="black" size={24} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="card-body p-0">
-                                        <h5 className="card-title text-truncate mb-1" style={{ fontSize: "1rem" }}>{playlist.name}</h5>
-                                        <p className="card-text text-secondary small">{playlist.tracks} Tracks</p>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </main>
+      if (fetchError) throw fetchError;
+      setPlaylists(data || []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const { data, error } = await supabase
+      .from("playlists")
+      .insert([{ name, user_id: session.user.id }])
+      .select()
+      .single();
+
+    if (!error) {
+      setPlaylists([{ ...data, playlist_songs: [] }, ...playlists]);
+      setShowModal(false);
+      setName("");
+      navigate(`/playlists/${data.id}`);
+    }
+  };
+
+  return (
+    <div
+      className="d-flex flex-column vh-100 vw-100 text-white"
+      style={{ background: "#050508" }}
+    >
+      <Header />
+      <div className="d-flex flex-grow-1 overflow-hidden">
+        <Sidebar />
+        <main className="flex-grow-1 p-5 overflow-auto custom-scrollbar">
+          <div className="d-flex justify-content-between align-items-center mb-5">
+            <h1 className="display-4 fw-bold">Your Playlists</h1>
+            <button
+              className="btn btn-warning rounded-pill px-4 fw-bold shadow"
+              onClick={() => setShowModal(true)}
+            >
+              <Plus size={20} /> CREATE NEW
+            </button>
+          </div>
+
+          {error && (
+            <div className="alert alert-danger d-flex align-items-center gap-2">
+              <AlertCircle size={20} /> Error: {error}
             </div>
+          )}
 
-            {/* In-line CSS for the hover effect */}
-            <style>{`
-                .playlist-card:hover {
-                    background-color: #1e1e24 !important;
-                }
-                .play-button-overlay {
-                    opacity: 0;
-                    transform: translateY(10px);
-                    transition: all 0.3s ease;
-                }
-                .playlist-card:hover .play-button-overlay {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            `}</style>
+          {loading ? (
+            <div className="d-flex justify-content-center py-5">
+              <Loader2 className="animate-spin text-warning" size={48} />
+            </div>
+          ) : (
+            <>
+              {playlists.length === 0 ? (
+                <div className="text-center py-5">
+                  <Music size={48} className="text-secondary mb-3 opacity-25" />
+                  <p className="text-secondary">
+                    No playlists found. Create your first one!
+                  </p>
+                </div>
+              ) : (
+                <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5 g-4">
+                  {playlists.map((pl) => (
+                    <div key={pl.id} className="col">
+                      <div
+                        className="playlist-card p-3 h-100 rounded-4 cursor-pointer position-relative overflow-hidden"
+                        onClick={() => navigate(`/playlists/${pl.id}`)}
+                        style={{
+                          background: "#121216",
+                          transition: "all 0.3s ease",
+                          border: "1px solid #2a2a2a",
+                        }}
+                      >
+                        <div className="aspect-ratio-square bg-dark rounded-3 mb-3 d-flex align-items-center justify-content-center position-relative">
+                          <Music
+                            size={60}
+                            className="text-secondary opacity-25"
+                          />
+                          <div className="play-overlay position-absolute bottom-0 end-0 m-3 opacity-0 translate-y-2">
+                            <div className="btn btn-warning rounded-circle p-3 shadow-lg">
+                              <Play fill="black" size={24} />
+                            </div>
+                          </div>
+                        </div>
+                        <h5 className="fw-bold mb-1 text-truncate">
+                          {pl.name}
+                        </h5>
+                        <p className="small text-secondary mb-0">
+                          {pl.playlist_songs?.length || 0} Tracks
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </main>
+      </div>
+
+      <style>{`
+        .playlist-card:hover { background: #1a1a22 !important; transform: translateY(-5px); border-color: #ffc107 !important; }
+        .playlist-card:hover .play-overlay { opacity: 1 !important; transform: translateY(0) !important; transition: all 0.3s ease; }
+        .aspect-ratio-square { aspect-ratio: 1/1; width: 100%; }
+      `}</style>
+      {/* Create Modal */}
+      {showModal && (
+        <div
+          className="position-fixed top-0 start-0 w-100 vh-100 d-flex align-items-center justify-content-center"
+          style={{ backgroundColor: "rgba(0,0,0,0.85)", zIndex: 2000 }}
+        >
+          <div
+            className="musika-card p-4"
+            style={{
+              width: "400px",
+              background: "#121216",
+              border: "1px solid #ffc107",
+            }}
+          >
+            <h5 className="text-warning mb-4 fw-bold">NEW PLAYLIST</h5>
+            <form onSubmit={handleCreate}>
+              <input
+                className="form-control musika-input mb-4"
+                placeholder="Enter playlist name..."
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoFocus
+              />
+              <div className="d-flex gap-2">
+                <button className="btn btn-warning w-100 fw-bold">
+                  CREATE
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary w-100"
+                  onClick={() => setShowModal(false)}
+                >
+                  CANCEL
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-    );
+      )}
+    </div>
+  );
 }
