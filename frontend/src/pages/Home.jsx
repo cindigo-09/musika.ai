@@ -10,6 +10,7 @@ import {
   X,
   Loader2,
   AlertTriangle,
+  Heart,
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { useMusic } from "../context/MusicContext";
@@ -25,6 +26,9 @@ const slugify = (text) => {
     .replace(/\-\-+/g, "-");
 };
 
+const GENRES = ["pop", "rock", "hip-hop", "dance/electronic", "jazz", "classical", "blues", "country", "reggae", "world music", "soul", "metal", "punk", "experimental"];
+const MOODS = ["joy", "high energy", "confidence", "carefree", "celebration", "morning calm", "nostalgia", "defiant", "angry", "mischievous", "stressed", "balance", "calm"];
+
 export default function Home() {
   const {
     songs,
@@ -37,7 +41,7 @@ export default function Home() {
   } = useMusic();
 
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ title: "", artist: "" });
+  const [form, setForm] = useState({ title: "", artist: "", genres: [], moods: [] });
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
@@ -51,10 +55,53 @@ export default function Home() {
   const [selectedSongId, setSelectedSongId] = useState(null);
   const [showPlaylistPicker, setShowPlaylistPicker] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
+  const [favoriteSongIds, setFavoriteSongIds] = useState(new Set());
+
+  const toggleGenre = (g) => {
+    setForm(prev => ({
+      ...prev,
+      genres: prev.genres.includes(g) ? prev.genres.filter(x => x !== g) : [...prev.genres, g]
+    }));
+  };
+
+  const toggleMood = (m) => {
+    setForm(prev => ({
+      ...prev,
+      moods: prev.moods.includes(m) ? prev.moods.filter(x => x !== m) : [...prev.moods, m]
+    }));
+  };
 
   useEffect(() => {
     fetchSongs();
+    fetchFavorites();
   }, []);
+
+  const fetchFavorites = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data: favPlaylist } = await supabase
+        .from("playlists")
+        .select("id")
+        .eq("user_id", session.user.id)
+        .eq("name", "Favorites")
+        .single();
+
+      if (favPlaylist) {
+        const { data: favSongs } = await supabase
+          .from("playlist_songs")
+          .select("song_id")
+          .eq("playlist_id", favPlaylist.id);
+
+        if (favSongs) {
+          setFavoriteSongIds(new Set(favSongs.map(s => s.song_id)));
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const fetchSongs = async () => {
     const { data, error } = await supabase
@@ -129,6 +176,60 @@ export default function Home() {
     }
   };
 
+  const handleFavorite = async (songId) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      let { data: favPlaylist } = await supabase
+        .from("playlists")
+        .select("id")
+        .eq("user_id", session.user.id)
+        .eq("name", "Favorites")
+        .single();
+
+      if (!favPlaylist) {
+        const { data, error: createErr } = await supabase
+          .from("playlists")
+          .insert([{ name: "Favorites", user_id: session.user.id, description: "Your favorite tracks." }])
+          .select()
+          .single();
+        if (createErr) throw createErr;
+        favPlaylist = data;
+      }
+
+      if (favoriteSongIds.has(songId)) {
+        // Remove from favorites
+        const { error } = await supabase
+          .from("playlist_songs")
+          .delete()
+          .match({ playlist_id: favPlaylist.id, song_id: songId });
+
+        if (!error) {
+          const newSet = new Set(favoriteSongIds);
+          newSet.delete(songId);
+          setFavoriteSongIds(newSet);
+          triggerSuccess("Removed from Favorites");
+        }
+      } else {
+        // Add to favorites
+        const { error } = await supabase
+          .from("playlist_songs")
+          .insert([{ playlist_id: favPlaylist.id, song_id: songId }]);
+
+        if (!error) {
+          const newSet = new Set(favoriteSongIds);
+          newSet.add(songId);
+          setFavoriteSongIds(newSet);
+          triggerSuccess("Added to Favorites!");
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      triggerSuccess("Failed to update favorites");
+    }
+  };
+
   const handleUpload = async (e) => {
     e.preventDefault();
     if (!file) return;
@@ -156,22 +257,35 @@ export default function Home() {
         data: { publicUrl },
       } = supabase.storage.from("songs").getPublicUrl(filePath);
 
-      await supabase.from("songs").insert([
+      const { error: dbError } = await supabase.from("songs").insert([
         {
           title: form.title,
           artist: form.artist,
           song_url: publicUrl,
           user_id: session.user.id,
+          genre: (form.genres || []).join(","),
+          mood_tag: (form.moods || []).join(","),
         },
+      ]);
+      if (dbError) throw dbError;
+
+      // Log the upload activity
+      await supabase.from("activity_log").insert([
+        {
+          user_id: session.user.id,
+          action: "upload",
+          song_title: form.title
+        }
       ]);
 
       triggerSuccess(`"${form.title}" uploaded!`);
       fetchSongs();
       setShowModal(false);
-      setForm({ title: "", artist: "" });
+      setForm({ title: "", artist: "", genres: [], moods: [] });
       setFile(null);
     } catch (err) {
-      console.error(err.message);
+      console.error("Upload Error:", err);
+      alert("Error uploading: " + (err.message || err.toString()));
     } finally {
       setLoading(false);
     }
@@ -209,13 +323,101 @@ export default function Home() {
 
       await supabase.from("songs").delete().eq("id", songToDelete.id);
       setSongs(songs.filter((s) => s.id !== songToDelete.id));
-      triggerSuccess("Track deleted.");
+      // Log the delete activity
+      await supabase.from("activity_log").insert([
+        {
+          user_id: deleteConfirm.song.user_id,
+          action: "delete",
+          song_title: deleteConfirm.song.title
+        }
+      ]);
+
+      triggerSuccess("Song deleted!");
     } catch (err) {
       console.error(err);
+      triggerSuccess("Error deleting song");
     } finally {
       setDeleteConfirm({ show: false, song: null });
     }
   };
+
+  const getGroupedSongs = () => {
+    const genreCounts = {};
+    songs.forEach(song => {
+      const gList = song.genre ? song.genre.split(",").map(g => g.trim()).filter(Boolean) : [];
+      gList.forEach(g => {
+        genreCounts[g] = (genreCounts[g] || 0) + 1;
+      });
+    });
+
+    const groups = {}; 
+    const uncategorized = [];
+
+    songs.forEach(song => {
+      const gList = song.genre ? song.genre.split(",").map(g => g.trim()).filter(Boolean) : [];
+      
+      if (gList.length === 0) {
+        uncategorized.push(song);
+        return;
+      }
+
+      const sparseGenres = gList.filter(g => genreCounts[g] === 1);
+
+      if (sparseGenres.length > 0) {
+        sparseGenres.forEach(g => {
+          if (!groups[g]) groups[g] = [];
+          groups[g].push(song);
+        });
+      } else {
+        gList.forEach(g => {
+          if (!groups[g]) groups[g] = [];
+          groups[g].push(song);
+        });
+      }
+    });
+
+    return { groups, uncategorized };
+  };
+
+  const { groups, uncategorized } = getGroupedSongs();
+
+  const renderSongTable = (songList) => (
+    <table className="table table-dark table-hover mb-5">
+      <thead>
+        <tr className="text-secondary small">
+          <th>#</th>
+          <th>Title</th>
+          <th>Artist</th>
+          <th className="text-end px-4">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {songList.map((s, idx) => (
+          <tr key={s.id} className="align-middle" onClick={() => playSong(s)} style={{ cursor: "pointer" }}>
+            <td className="text-secondary">{idx + 1}</td>
+            <td className={currentSong?.id === s.id ? "text-warning fw-bold" : ""}>
+              {s.title}
+            </td>
+            <td className="text-secondary">{s.artist}</td>
+            <td className="text-end px-4">
+              <button className="btn btn-link text-warning p-0 me-3" onClick={(e) => { e.stopPropagation(); openPlaylistPicker(s.id); }}>
+                <Plus size={18} />
+              </button>
+              <button className="btn btn-link text-info p-0 me-3" onClick={(e) => { e.stopPropagation(); setEditingSong(s); setShowEditModal(true); }}>
+                <Edit2 size={16} />
+              </button>
+              <button className="btn btn-link text-danger p-0 me-3" onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ show: true, song: s }); }}>
+                <Trash2 size={18} />
+              </button>
+              <button className="btn btn-link p-0" onClick={(e) => { e.stopPropagation(); handleFavorite(s.id); }}>
+                <Heart size={18} fill={favoriteSongIds.has(s.id) ? "currentColor" : "none"} className={favoriteSongIds.has(s.id) ? "text-danger" : "text-secondary"} />
+              </button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
 
   return (
     <div
@@ -248,64 +450,25 @@ export default function Home() {
             </button>
           </div>
 
-          <table className="table table-dark table-hover">
-            <thead>
-              <tr className="text-secondary small">
-                <th>#</th>
-                <th>Title</th>
-                <th>Artist</th>
-                <th className="text-end px-4">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {songs.map((s, idx) => (
-                <tr key={s.id} className="align-middle">
-                  <td className="text-secondary">{idx + 1}</td>
-                  <td
-                    className={
-                      currentSong?.id === s.id ? "text-warning fw-bold" : ""
-                    }
-                  >
-                    {s.title}
-                  </td>
-                  <td className="text-secondary">{s.artist}</td>
-                  <td className="text-end px-4">
-                    <button
-                      className="btn btn-link text-warning p-0 me-3"
-                      onClick={() => openPlaylistPicker(s.id)}
-                    >
-                      <Plus size={18} />
-                    </button>
-                    <button
-                      className="btn btn-link text-info p-0 me-3"
-                      onClick={() => {
-                        setEditingSong(s);
-                        setShowEditModal(true);
-                      }}
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                    <button
-                      className="btn btn-link text-danger p-0 me-3"
-                      onClick={() => setDeleteConfirm({ show: true, song: s })}
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                    <button
-                      className="btn btn-link text-white p-0"
-                      onClick={() => playSong(s)}
-                    >
-                      {currentSong?.id === s.id && isPlaying ? (
-                        <Pause size={18} />
-                      ) : (
-                        <Play size={18} />
-                      )}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {Object.keys(groups).sort().map(genre => (
+            <div key={genre}>
+              <h4 className="text-warning mt-4 mb-3 fw-bold text-uppercase" style={{ letterSpacing: "2px" }}>{genre}</h4>
+              {renderSongTable(groups[genre])}
+            </div>
+          ))}
+
+          {uncategorized.length > 0 && (
+            <div>
+              <h4 className="text-secondary mt-4 mb-3 fw-bold text-uppercase" style={{ letterSpacing: "2px" }}>Uncategorized</h4>
+              {renderSongTable(uncategorized)}
+            </div>
+          )}
+
+          {songs.length === 0 && (
+            <div className="text-center py-5">
+              <p className="text-secondary">No songs in your library yet. Upload some music!</p>
+            </div>
+          )}
         </main>
       </div>
 
@@ -488,6 +651,39 @@ export default function Home() {
                 required
                 onChange={(e) => setForm({ ...form, artist: e.target.value })}
               />
+              
+              <div className="mb-3">
+                <label className="text-secondary small mb-2">Genres</label>
+                <div className="d-flex flex-wrap gap-2">
+                  {GENRES.map(g => (
+                    <span 
+                      key={g} 
+                      className={`badge rounded-pill ${form.genres.includes(g) ? 'bg-warning text-dark' : 'bg-dark text-secondary border border-secondary'}`}
+                      style={{ cursor: "pointer" }}
+                      onClick={() => toggleGenre(g)}
+                    >
+                      {g}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <label className="text-secondary small mb-2">Moods</label>
+                <div className="d-flex flex-wrap gap-2">
+                  {MOODS.map(m => (
+                    <span 
+                      key={m} 
+                      className={`badge rounded-pill ${form.moods.includes(m) ? 'bg-info text-dark' : 'bg-dark text-secondary border border-secondary'}`}
+                      style={{ cursor: "pointer" }}
+                      onClick={() => toggleMood(m)}
+                    >
+                      {m}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
               <input
                 type="file"
                 accept=".mp3"

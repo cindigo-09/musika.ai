@@ -72,6 +72,23 @@ app.put("/api/user/:id/profile", async (req, res) => {
   });
 
   if (error) return res.status(500).json({ error: error.message });
+
+  // Auto-create "Favorites" playlist
+  const { data: existingFav } = await supabaseAdmin
+    .from("playlists")
+    .select("id")
+    .eq("user_id", req.params.id)
+    .eq("name", "Favorites")
+    .single();
+
+  if (!existingFav) {
+    await supabaseAdmin.from("playlists").insert({
+      name: "Favorites",
+      user_id: req.params.id,
+      description: "Your favorite tracks."
+    });
+  }
+
   res.json({ success: true });
 });
 
