@@ -22,10 +22,13 @@ function Header() {
   }, []);
 
   const handleLogout = async () => {
-    saveProgress(); // Save before logging out
-    stopMusic(); // Stop before logging out
-    await supabase.auth.signOut();
-    navigate("/login");
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Error logging out:", error.message);
+    } else {
+      // Clear any local state if necessary and redirect
+      navigate("/login");
+    }
   };
 
   return (
