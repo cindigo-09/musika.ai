@@ -133,16 +133,27 @@ export default function PlaylistDetails() {
   };
 
   const handleUpdateMeta = async () => {
-    const { error } = await supabase
-      .from("playlists")
-      .update({ name: editForm.name, description: editForm.description })
-      .eq("id", id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
 
-    if (error) {
-      alert("Error updating playlist: " + error.message);
-    } else {
-      setPlaylist({ ...playlist, name: editForm.name, description: editForm.description });
-      setIsEditing(false);
+      const { error } = await supabase
+        .from("playlists")
+        .update({ 
+          name: editForm.name, 
+          description: editForm.description,
+          owner_email: session.user.email
+        })
+        .eq("id", id);
+
+      if (error) {
+        alert("Error updating playlist: " + error.message);
+      } else {
+        setPlaylist({ ...playlist, name: editForm.name, description: editForm.description });
+        setIsEditing(false);
+      }
+    } catch (err) {
+      alert("Error: " + err.message);
     }
   };
 
@@ -217,7 +228,7 @@ export default function PlaylistDetails() {
       if (!favPlaylist) {
         const { data, error: createErr } = await supabase
           .from("playlists")
-          .insert([{ name: "Favorites", user_id: session.user.id, description: "Your favorite tracks." }])
+          .insert([{ name: "Favorites", user_id: session.user.id, owner_email: session.user.email, description: "Your favorite tracks." }])
           .select()
           .single();
         if (createErr) throw createErr;
