@@ -257,7 +257,7 @@ export default function Home() {
         data: { publicUrl },
       } = supabase.storage.from("songs").getPublicUrl(filePath);
 
-      const { error: dbError } = await supabase.from("songs").insert([
+      const { data: songData, error: dbError } = await supabase.from("songs").insert([
         {
           title: form.title,
           artist: form.artist,
@@ -266,7 +266,7 @@ export default function Home() {
           genre: (form.genres || []).join(","),
           mood_tag: (form.moods || []).join(","),
         },
-      ]);
+      ]).select().single();
       if (dbError) throw dbError;
 
       // Log the upload activity
@@ -274,6 +274,7 @@ export default function Home() {
         {
           user_id: session.user.id,
           action: "upload",
+          song_id: songData.id,
           song_title: form.title
         }
       ]);
@@ -328,6 +329,7 @@ export default function Home() {
         {
           user_id: deleteConfirm.song.user_id,
           action: "delete",
+          song_id: songToDelete.id,
           song_title: deleteConfirm.song.title
         }
       ]);

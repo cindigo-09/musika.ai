@@ -57,11 +57,11 @@ const Layout = () => {
     className="form-range w-50" 
     min="0" 
     max="1" 
-    step="0.01" // Provides smoother control
+    step="0.01" 
     defaultValue="1" 
     onChange={(e) => {
       if (audioRef.current) {
-        audioRef.current.volume = Number(e.target.value);
+        audioRef.current.volume = Number(e.target.value);s
       }
     }} 
   />
