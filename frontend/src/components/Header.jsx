@@ -22,6 +22,9 @@ function Header() {
   }, []);
 
   const handleLogout = async () => {
+    // Stop music before logging out
+    stopMusic();
+    
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error("Error logging out:", error.message);

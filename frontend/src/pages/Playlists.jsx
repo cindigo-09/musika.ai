@@ -4,9 +4,11 @@ import { Plus, Music, Loader2, Play, AlertCircle } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
+import { useMusic } from "../context/MusicContext";
 
 export default function Playlists() {
   const navigate = useNavigate();
+  const { stopMusic } = useMusic();
   const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -60,6 +62,7 @@ export default function Playlists() {
       setPlaylists([{ ...data, playlist_songs: [] }, ...playlists]);
       setShowModal(false);
       setName("");
+      stopMusic();
       navigate(`/playlists/${data.id}`);
     }
   };
@@ -108,7 +111,10 @@ export default function Playlists() {
                     <div key={pl.id} className="col">
                       <div
                         className="playlist-card p-3 h-100 rounded-4 cursor-pointer position-relative overflow-hidden"
-                        onClick={() => navigate(`/playlists/${pl.id}`)}
+                        onClick={() => {
+                          stopMusic();
+                          navigate(`/playlists/${pl.id}`);
+                        }}
                         style={{
                           background: "#121216",
                           transition: "all 0.3s ease",
