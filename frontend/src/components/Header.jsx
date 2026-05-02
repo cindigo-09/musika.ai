@@ -36,10 +36,10 @@ function Header() {
       className="d-flex justify-content-between align-items-center p-3 border-bottom border-secondary bg-dark bg-opacity-25"
       style={{ height: "70px" }}
     >
-      <h4 className="page-title m-0">@MUSIKA.AI 2026</h4>
+      <h4 className="page-title m-0">MUSIKA.AI</h4>
       <div className="d-flex align-items-center gap-3">
         <div className="text-end d-none d-sm-block">
-          <div className="small text-white-50 text-uppercase">Operator</div>
+          <div className="small text-white-50 text-uppercase">User</div>
           <div className="fw-bold text-warning">{currentUser}</div>
         </div>
         <button

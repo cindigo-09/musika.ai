@@ -52,7 +52,7 @@ export default function Playlists() {
     } = await supabase.auth.getSession();
     const { data, error } = await supabase
       .from("playlists")
-      .insert([{ name, user_id: session.user.id }])
+      .insert([{ name, user_id: session.user.id, owner_email: session.user.email }])
       .select()
       .single();
 
