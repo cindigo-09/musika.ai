@@ -21,7 +21,7 @@ import Sidebar from "../components/Sidebar";
 export default function PlaylistDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { playSong, currentSong } = useMusic();
+  const { playSong, currentSong, stopMusic } = useMusic();
 
   const [playlist, setPlaylist] = useState(null);
   const [playlistSongs, setPlaylistSongs] = useState([]);
@@ -291,7 +291,10 @@ export default function PlaylistDetails() {
           <div className="d-flex justify-content-between align-items-center mb-4">
             <button
               className="btn btn-link text-secondary p-0 d-flex align-items-center gap-2 text-decoration-none"
-              onClick={() => navigate("/playlists")}
+              onClick={() => {
+                stopMusic();
+                navigate("/playlists");
+              }}
             >
               <ArrowLeft size={20} /> BACK TO PLAYLISTS
             </button>

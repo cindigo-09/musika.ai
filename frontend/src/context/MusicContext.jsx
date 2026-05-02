@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
+import { useLocation } from "react-router-dom";
 
 const MusicContext = createContext();
 
@@ -17,6 +18,7 @@ export const MusicProvider = ({ children }) => {
   const [duration, setDuration] = useState(0);
 
   const audioRef = useRef(new Audio());
+  const location = useLocation();
 
   const playSong = async (song) => {
     if (!song || !song.song_url) return;
@@ -86,6 +88,17 @@ export const MusicProvider = ({ children }) => {
       audio.removeEventListener("ended", onEnded);
     };
   }, [playNext]);
+
+  // Stop music when navigating away from playlist routes
+  useEffect(() => {
+    const isPlaylistRoute = location.pathname.startsWith('/playlists');
+    const isHomeRoute = location.pathname === '/home';
+    
+    // Stop music if navigating from playlist to non-playlist routes
+    if (!isPlaylistRoute && !isHomeRoute && currentSong) {
+      stopMusic();
+    }
+  }, [location.pathname, currentSong]);
 
   return (
     <MusicContext.Provider
