@@ -7,6 +7,7 @@ const Layout = () => {
   const location = useLocation();
 
   const isAuthPage = location.pathname === "/login" || location.pathname === "/register";
+  const isAdminPage = location.pathname.startsWith("/admin");
 
   const handleSeek = (e) => {
     const time = Number(e.target.value);
@@ -26,7 +27,7 @@ const Layout = () => {
         <Outlet />
       </main>
 
-      {!isAuthPage && currentSong && (
+      {!isAuthPage && !isAdminPage && currentSong && (
         <footer className="fixed-bottom bg-black border-top border-secondary d-flex align-items-center justify-content-between px-4" style={{ height: "100px", zIndex: 1030 }}>
           <div className="d-flex align-items-center gap-3" style={{ width: "25%" }}>
             <div className="text-truncate">
