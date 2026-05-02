@@ -51,9 +51,21 @@ const Layout = () => {
           </div>
 
           <div className="d-flex align-items-center justify-content-end gap-2" style={{ width: "25%" }}>
-            <Volume2 size={18} className="text-white-50" />
-            <input type="range" className="form-range w-50" min="0" max="100" onChange={e => (audioRef.current.volume = e.target.value / 100)} />
-          </div>
+  <Volume2 size={18} className="text-white-50" />
+  <input 
+    type="range" 
+    className="form-range w-50" 
+    min="0" 
+    max="1" 
+    step="0.01" // Provides smoother control
+    defaultValue="1" 
+    onChange={(e) => {
+      if (audioRef.current) {
+        audioRef.current.volume = Number(e.target.value);
+      }
+    }} 
+  />
+</div>
         </footer>
       )}
     </div>

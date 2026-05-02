@@ -96,6 +96,7 @@ export const MusicProvider = ({ children }) => {
         isPlaying,
         currentTime,
         duration,
+        audioRef,
         playSong,
         playNext,
         playPrev,
