@@ -16,14 +16,21 @@ export const MusicProvider = ({ children }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [repeatMode, setRepeatMode] = useState("none");
 
   const audioRef = useRef(new Audio());
   const location = useLocation();
 
-  const playSong = async (song) => {
+  const playSong = async (song, songList = null, forcePlay = false) => {
     if (!song || !song.song_url) return;
+
+    if (songList && Array.isArray(songList)) {
+      setSongs(songList);
+    }
+
     try {
-      if (currentSong?.id === song.id) {
+      // If forcePlay is true, we skip the toggle check to ensure the song actually plays
+      if (currentSong?.id === song.id && !forcePlay) {
         if (isPlaying) {
           audioRef.current.pause();
           setIsPlaying(false);
@@ -32,6 +39,7 @@ export const MusicProvider = ({ children }) => {
           setIsPlaying(true);
         }
       } else {
+        // Load and play fresh
         audioRef.current.src = song.song_url;
         audioRef.current.load();
         await audioRef.current.play();
@@ -43,19 +51,60 @@ export const MusicProvider = ({ children }) => {
     }
   };
 
-  const playNext = useCallback(() => {
-    if (songs.length === 0) return;
-    const idx = songs.findIndex((s) => s.id === currentSong?.id);
-    const next = idx !== -1 ? songs[(idx + 1) % songs.length] : songs[0];
-    playSong(next);
-  }, [songs, currentSong]);
+  const playNext = useCallback(
+    (isAutomatic = false) => {
+      if (songs.length === 0 || !currentSong) return;
 
-  const playPrev = useCallback(() => {
-    if (songs.length === 0) return;
-    const idx = songs.findIndex((s) => s.id === currentSong?.id);
-    const prev = idx > 0 ? songs[idx - 1] : songs[songs.length - 1];
-    playSong(prev);
-  }, [songs, currentSong]);
+      const currentIndex = songs.findIndex((s) => s.id === currentSong.id);
+      const nextIndex = currentIndex + 1;
+
+      // Handle "Repeat One" for automatic transitions
+      if (isAutomatic && repeatMode === "one") {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play();
+        return;
+      }
+
+      if (nextIndex >= songs.length) {
+        // If clicking 'Next' OR Repeat All is ON, go back to song[0]
+        if (!isAutomatic || repeatMode === "all") {
+          // PASSING TRUE HERE IS CRITICAL to avoid the pause bug
+          playSong(songs[0], null, true);
+        } else {
+          stopMusic();
+        }
+      } else {
+        // Normal progression - also uses forcePlay to ensure reliability
+        playSong(songs[nextIndex], null, true);
+      }
+    },
+    [songs, currentSong, repeatMode],
+  );
+
+  const playPrev = () => {
+    if (songs.length === 0 || !currentSong) return;
+
+    // Restart song if more than 3 seconds have passed
+    if (audioRef.current.currentTime > 3) {
+      audioRef.current.currentTime = 0;
+      return;
+    }
+
+    const currentIndex = songs.findIndex((s) => s.id === currentSong.id);
+    let prevIndex = currentIndex - 1;
+    if (prevIndex < 0) {
+      prevIndex = songs.length - 1;
+    }
+    playSong(songs[prevIndex], null, true);
+  };
+
+  const toggleRepeat = () => {
+    setRepeatMode((prev) => {
+      if (prev === "none") return "all";
+      if (prev === "all") return "one";
+      return "none";
+    });
+  };
 
   const stopMusic = () => {
     audioRef.current.pause();
@@ -64,9 +113,7 @@ export const MusicProvider = ({ children }) => {
   };
 
   const closePlayer = () => {
-    audioRef.current.pause();
-    audioRef.current.currentTime = 0;
-    setIsPlaying(false);
+    stopMusic();
     setCurrentTime(0);
     setDuration(0);
     setCurrentSong(null);
@@ -85,7 +132,7 @@ export const MusicProvider = ({ children }) => {
     const audio = audioRef.current;
     const onLoadedMetadata = () => setDuration(audio.duration);
     const onTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const onEnded = () => playNext();
+    const onEnded = () => playNext(true);
 
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
     audio.addEventListener("timeupdate", onTimeUpdate);
@@ -98,12 +145,12 @@ export const MusicProvider = ({ children }) => {
     };
   }, [playNext]);
 
-  // Stop music when navigating to auth/admin pages only
   useEffect(() => {
-    const isAuthRoute = location.pathname === '/login' || location.pathname === '/register';
-    const isAdminRoute = location.pathname.startsWith('/admin');
-
-    if ((isAuthRoute || isAdminRoute) && currentSong) {
+    const isAuthRoute = ["/login", "/register"].includes(location.pathname);
+    if (
+      (isAuthRoute || location.pathname.startsWith("/admin")) &&
+      currentSong
+    ) {
       stopMusic();
     }
   }, [location.pathname, currentSong]);
@@ -117,10 +164,12 @@ export const MusicProvider = ({ children }) => {
         isPlaying,
         currentTime,
         duration,
+        repeatMode,
         audioRef,
         playSong,
         playNext,
         playPrev,
+        toggleRepeat,
         stopMusic,
         closePlayer,
         updateSongInList,
