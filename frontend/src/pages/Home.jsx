@@ -439,9 +439,9 @@ export default function Home() {
         </div>
       )}
 
-      <div className="container-fluid p-0 d-flex flex-grow-1">
+      <div className="container-fluid p-0 d-flex flex-grow-1" style={{ minHeight: 0 }}>
         <Sidebar />
-        <main className="flex-grow-1 overflow-auto p-4 custom-scrollbar">
+        <main className="flex-grow-1 overflow-auto p-4 custom-scrollbar" style={{ minHeight: 0 }}>
           <div className="d-flex justify-content-between align-items-center mb-4">
             <h2 className="display-6 m-0 fw-bold">Library</h2>
             <button
