@@ -26,8 +26,37 @@ const slugify = (text) => {
     .replace(/\-\-+/g, "-");
 };
 
-const GENRES = ["pop", "rock", "hip-hop", "dance/electronic", "jazz", "classical", "blues", "country", "reggae", "world music", "soul", "metal", "punk", "experimental"];
-const MOODS = ["joy", "high energy", "confidence", "carefree", "celebration", "morning calm", "nostalgia", "defiant", "angry", "mischievous", "stressed", "balance", "calm"];
+const GENRES = [
+  "pop",
+  "rock",
+  "hip-hop",
+  "dance/electronic",
+  "jazz",
+  "classical",
+  "blues",
+  "country",
+  "reggae",
+  "world music",
+  "soul",
+  "metal",
+  "punk",
+  "experimental",
+];
+const MOODS = [
+  "joy",
+  "high energy",
+  "confidence",
+  "carefree",
+  "celebration",
+  "morning calm",
+  "nostalgia",
+  "defiant",
+  "angry",
+  "mischievous",
+  "stressed",
+  "balance",
+  "calm",
+];
 
 export default function Home() {
   const {
@@ -40,8 +69,19 @@ export default function Home() {
     stopMusic,
   } = useMusic();
 
+  const handlePlayLibrarySong = (song, currentQueue) => {
+    // Passes the specific genre list as the active queue
+    playSong(song, currentQueue);
+  };
+
+  const [currentUserId, setCurrentUserId] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ title: "", artist: "", genres: [], moods: [] });
+  const [form, setForm] = useState({
+    title: "",
+    artist: "",
+    genres: [],
+    moods: [],
+  });
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
@@ -58,16 +98,20 @@ export default function Home() {
   const [favoriteSongIds, setFavoriteSongIds] = useState(new Set());
 
   const toggleGenre = (g) => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
-      genres: prev.genres.includes(g) ? prev.genres.filter(x => x !== g) : [...prev.genres, g]
+      genres: prev.genres.includes(g)
+        ? prev.genres.filter((x) => x !== g)
+        : [...prev.genres, g],
     }));
   };
 
   const toggleMood = (m) => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
-      moods: prev.moods.includes(m) ? prev.moods.filter(x => x !== m) : [...prev.moods, m]
+      moods: prev.moods.includes(m)
+        ? prev.moods.filter((x) => x !== m)
+        : [...prev.moods, m],
     }));
   };
 
@@ -78,7 +122,9 @@ export default function Home() {
 
   const fetchFavorites = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) return;
 
       const { data: favPlaylist } = await supabase
@@ -95,7 +141,7 @@ export default function Home() {
           .eq("playlist_id", favPlaylist.id);
 
         if (favSongs) {
-          setFavoriteSongIds(new Set(favSongs.map(s => s.song_id)));
+          setFavoriteSongIds(new Set(favSongs.map((s) => s.song_id)));
         }
       }
     } catch (err) {
@@ -104,6 +150,15 @@ export default function Home() {
   };
 
   const fetchSongs = async () => {
+    // 1. Get the current logged-in user to separate library ownership
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session) {
+      setCurrentUserId(session.user.id);
+    }
+
+    // 2. Fetch all songs
     const { data, error } = await supabase
       .from("songs")
       .select("*")
@@ -117,7 +172,7 @@ export default function Home() {
   };
 
   const openPlaylistPicker = async (songId) => {
-    setSelectedSongId(songId); // Ensure the song ID is saved
+    setSelectedSongId(songId);
     try {
       const {
         data: { session },
@@ -148,7 +203,6 @@ export default function Home() {
         .single();
       if (!error) {
         triggerSuccess(`Playlist created!`);
-        // Add the song to the newly created playlist automatically
         const { error: joinError } = await supabase
           .from("playlist_songs")
           .insert([{ playlist_id: newPlaylist.id, song_id: selectedSongId }]);
@@ -178,7 +232,9 @@ export default function Home() {
 
   const handleFavorite = async (songId) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) return;
 
       let { data: favPlaylist } = await supabase
@@ -191,7 +247,13 @@ export default function Home() {
       if (!favPlaylist) {
         const { data, error: createErr } = await supabase
           .from("playlists")
-          .insert([{ name: "Favorites", user_id: session.user.id, description: "Your favorite tracks." }])
+          .insert([
+            {
+              name: "Favorites",
+              user_id: session.user.id,
+              description: "Your favorite tracks.",
+            },
+          ])
           .select()
           .single();
         if (createErr) throw createErr;
@@ -199,7 +261,6 @@ export default function Home() {
       }
 
       if (favoriteSongIds.has(songId)) {
-        // Remove from favorites
         const { error } = await supabase
           .from("playlist_songs")
           .delete()
@@ -212,7 +273,6 @@ export default function Home() {
           triggerSuccess("Removed from Favorites");
         }
       } else {
-        // Add to favorites
         const { error } = await supabase
           .from("playlist_songs")
           .insert([{ playlist_id: favPlaylist.id, song_id: songId }]);
@@ -257,26 +317,29 @@ export default function Home() {
         data: { publicUrl },
       } = supabase.storage.from("songs").getPublicUrl(filePath);
 
-      const { data: songData, error: dbError } = await supabase.from("songs").insert([
-        {
-          title: form.title,
-          artist: form.artist,
-          song_url: publicUrl,
-          user_id: session.user.id,
-          genre: (form.genres || []).join(","),
-          mood_tag: (form.moods || []).join(","),
-        },
-      ]).select().single();
+      const { data: songData, error: dbError } = await supabase
+        .from("songs")
+        .insert([
+          {
+            title: form.title,
+            artist: form.artist,
+            song_url: publicUrl,
+            user_id: session.user.id,
+            genre: (form.genres || []).join(","),
+            mood_tag: (form.moods || []).join(","),
+          },
+        ])
+        .select()
+        .single();
       if (dbError) throw dbError;
 
-      // Log the upload activity
       await supabase.from("activity_log").insert([
         {
           user_id: session.user.id,
           action: "upload",
           song_id: songData.id,
-          song_title: form.title
-        }
+          song_title: form.title,
+        },
       ]);
 
       triggerSuccess(`"${form.title}" uploaded!`);
@@ -324,14 +387,14 @@ export default function Home() {
 
       await supabase.from("songs").delete().eq("id", songToDelete.id);
       setSongs(songs.filter((s) => s.id !== songToDelete.id));
-      // Log the delete activity
+
       await supabase.from("activity_log").insert([
         {
           user_id: deleteConfirm.song.user_id,
           action: "delete",
           song_id: songToDelete.id,
-          song_title: deleteConfirm.song.title
-        }
+          song_title: deleteConfirm.song.title,
+        },
       ]);
 
       triggerSuccess("Song deleted!");
@@ -343,35 +406,46 @@ export default function Home() {
     }
   };
 
-  const getGroupedSongs = () => {
+  // Restructured to accept a specific source array of songs for isolation
+  const getGroupedSongs = (sourceSongs) => {
     const genreCounts = {};
-    songs.forEach(song => {
-      const gList = song.genre ? song.genre.split(",").map(g => g.trim()).filter(Boolean) : [];
-      gList.forEach(g => {
+    sourceSongs.forEach((song) => {
+      const gList = song.genre
+        ? song.genre
+            .split(",")
+            .map((g) => g.trim())
+            .filter(Boolean)
+        : [];
+      gList.forEach((g) => {
         genreCounts[g] = (genreCounts[g] || 0) + 1;
       });
     });
 
-    const groups = {}; 
+    const groups = {};
     const uncategorized = [];
 
-    songs.forEach(song => {
-      const gList = song.genre ? song.genre.split(",").map(g => g.trim()).filter(Boolean) : [];
-      
+    sourceSongs.forEach((song) => {
+      const gList = song.genre
+        ? song.genre
+            .split(",")
+            .map((g) => g.trim())
+            .filter(Boolean)
+        : [];
+
       if (gList.length === 0) {
         uncategorized.push(song);
         return;
       }
 
-      const sparseGenres = gList.filter(g => genreCounts[g] === 1);
+      const sparseGenres = gList.filter((g) => genreCounts[g] === 1);
 
       if (sparseGenres.length > 0) {
-        sparseGenres.forEach(g => {
+        sparseGenres.forEach((g) => {
           if (!groups[g]) groups[g] = [];
           groups[g].push(song);
         });
       } else {
-        gList.forEach(g => {
+        gList.forEach((g) => {
           if (!groups[g]) groups[g] = [];
           groups[g].push(song);
         });
@@ -381,7 +455,12 @@ export default function Home() {
     return { groups, uncategorized };
   };
 
-  const { groups, uncategorized } = getGroupedSongs();
+  // Isolate Songs
+  const mySongsList = songs.filter((s) => s.user_id === currentUserId);
+  const communitySongsList = songs.filter((s) => s.user_id !== currentUserId);
+
+  const myGrouped = getGroupedSongs(mySongsList);
+  const communityGrouped = getGroupedSongs(communitySongsList);
 
   const renderSongTable = (songList) => (
     <table className="table table-dark table-hover mb-5">
@@ -395,30 +474,110 @@ export default function Home() {
       </thead>
       <tbody>
         {songList.map((s, idx) => (
-          <tr key={s.id} className="align-middle" onClick={() => playSong(s)} style={{ cursor: "pointer" }}>
+          <tr
+            key={s.id}
+            className="align-middle"
+            onClick={() => handlePlayLibrarySong(s)}
+            style={{ cursor: "pointer" }}
+          >
             <td className="text-secondary">{idx + 1}</td>
-            <td className={currentSong?.id === s.id ? "text-warning fw-bold" : ""}>
+            <td
+              className={currentSong?.id === s.id ? "text-warning fw-bold" : ""}
+            >
               {s.title}
             </td>
             <td className="text-secondary">{s.artist}</td>
             <td className="text-end px-4">
-              <button className="btn btn-link text-warning p-0 me-3" onClick={(e) => { e.stopPropagation(); openPlaylistPicker(s.id); }}>
+              <button
+                className="btn btn-link text-warning p-0 me-3"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openPlaylistPicker(s.id);
+                }}
+              >
                 <Plus size={18} />
               </button>
-              <button className="btn btn-link text-info p-0 me-3" onClick={(e) => { e.stopPropagation(); setEditingSong(s); setShowEditModal(true); }}>
-                <Edit2 size={16} />
-              </button>
-              <button className="btn btn-link text-danger p-0 me-3" onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ show: true, song: s }); }}>
-                <Trash2 size={18} />
-              </button>
-              <button className="btn btn-link p-0" onClick={(e) => { e.stopPropagation(); handleFavorite(s.id); }}>
-                <Heart size={18} fill={favoriteSongIds.has(s.id) ? "currentColor" : "none"} className={favoriteSongIds.has(s.id) ? "text-danger" : "text-secondary"} />
+
+              {/* Only show Edit and Delete if the current user uploaded the track */}
+              {s.user_id === currentUserId && (
+                <>
+                  <button
+                    className="btn btn-link text-info p-0 me-3"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingSong(s);
+                      setShowEditModal(true);
+                    }}
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  <button
+                    className="btn btn-link text-danger p-0 me-3"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteConfirm({ show: true, song: s });
+                    }}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </>
+              )}
+
+              <button
+                className="btn btn-link p-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleFavorite(s.id);
+                }}
+              >
+                <Heart
+                  size={18}
+                  fill={favoriteSongIds.has(s.id) ? "currentColor" : "none"}
+                  className={
+                    favoriteSongIds.has(s.id) ? "text-danger" : "text-secondary"
+                  }
+                />
               </button>
             </td>
           </tr>
         ))}
       </tbody>
     </table>
+  );
+
+  const renderGroupedSection = ({ groups, uncategorized }, emptyMessage) => (
+    <>
+      {Object.keys(groups).length === 0 && uncategorized.length === 0 && (
+        <div className="text-center py-4">
+          <p className="text-secondary">{emptyMessage}</p>
+        </div>
+      )}
+      {Object.keys(groups)
+        .sort()
+        .map((genre) => (
+          <div key={genre}>
+            <h4
+              className="text-warning mt-4 mb-3 fw-bold text-uppercase fs-5"
+              style={{ letterSpacing: "2px" }}
+            >
+              {genre}
+            </h4>
+            {renderSongTable(groups[genre])}
+          </div>
+        ))}
+
+      {uncategorized.length > 0 && (
+        <div>
+          <h4
+            className="text-secondary mt-4 mb-3 fw-bold text-uppercase fs-5"
+            style={{ letterSpacing: "2px" }}
+          >
+            Uncategorized
+          </h4>
+          {renderSongTable(uncategorized)}
+        </div>
+      )}
+    </>
   );
 
   return (
@@ -439,9 +598,15 @@ export default function Home() {
         </div>
       )}
 
-      <div className="container-fluid p-0 d-flex flex-grow-1" style={{ minHeight: 0 }}>
+      <div
+        className="container-fluid p-0 d-flex flex-grow-1"
+        style={{ minHeight: 0 }}
+      >
         <Sidebar />
-        <main className="flex-grow-1 overflow-auto p-4 custom-scrollbar" style={{ minHeight: 0 }}>
+        <main
+          className="flex-grow-1 overflow-auto p-4 custom-scrollbar"
+          style={{ minHeight: 0 }}
+        >
           <div className="d-flex justify-content-between align-items-center mb-4">
             <h2 className="display-6 m-0 fw-bold">Library</h2>
             <button
@@ -452,29 +617,29 @@ export default function Home() {
             </button>
           </div>
 
-          {Object.keys(groups).sort().map(genre => (
-            <div key={genre}>
-              <h4 className="text-warning mt-4 mb-3 fw-bold text-uppercase" style={{ letterSpacing: "2px" }}>{genre}</h4>
-              {renderSongTable(groups[genre])}
-            </div>
-          ))}
+          <div className="mb-5">
+            <h3 className="fw-bold mb-3 border-bottom border-secondary pb-2 text-white">
+              My Tracks
+            </h3>
+            {renderGroupedSection(
+              myGrouped,
+              "You haven't uploaded any tracks yet.",
+            )}
+          </div>
 
-          {uncategorized.length > 0 && (
-            <div>
-              <h4 className="text-secondary mt-4 mb-3 fw-bold text-uppercase" style={{ letterSpacing: "2px" }}>Uncategorized</h4>
-              {renderSongTable(uncategorized)}
-            </div>
-          )}
-
-          {songs.length === 0 && (
-            <div className="text-center py-5">
-              <p className="text-secondary">No songs in your library yet. Upload some music!</p>
-            </div>
-          )}
+          <div className="mb-5">
+            <h3 className="fw-bold mb-3 border-bottom border-secondary pb-2 text-white">
+              Community Tracks
+            </h3>
+            {renderGroupedSection(
+              communityGrouped,
+              "No community tracks found.",
+            )}
+          </div>
         </main>
       </div>
 
-      {/* Playlist Picker Modal (FIXED) */}
+      {/* Playlist Picker Modal */}
       {showPlaylistPicker && (
         <div
           className="position-fixed top-0 start-0 w-100 vh-100 d-flex align-items-center justify-content-center"
@@ -653,14 +818,14 @@ export default function Home() {
                 required
                 onChange={(e) => setForm({ ...form, artist: e.target.value })}
               />
-              
+
               <div className="mb-3">
                 <label className="text-secondary small mb-2">Genres</label>
                 <div className="d-flex flex-wrap gap-2">
-                  {GENRES.map(g => (
-                    <span 
-                      key={g} 
-                      className={`badge rounded-pill ${form.genres.includes(g) ? 'bg-warning text-dark' : 'bg-dark text-secondary border border-secondary'}`}
+                  {GENRES.map((g) => (
+                    <span
+                      key={g}
+                      className={`badge rounded-pill ${form.genres.includes(g) ? "bg-warning text-dark" : "bg-dark text-secondary border border-secondary"}`}
                       style={{ cursor: "pointer" }}
                       onClick={() => toggleGenre(g)}
                     >
@@ -673,10 +838,10 @@ export default function Home() {
               <div className="mb-3">
                 <label className="text-secondary small mb-2">Moods</label>
                 <div className="d-flex flex-wrap gap-2">
-                  {MOODS.map(m => (
-                    <span 
-                      key={m} 
-                      className={`badge rounded-pill ${form.moods.includes(m) ? 'bg-info text-dark' : 'bg-dark text-secondary border border-secondary'}`}
+                  {MOODS.map((m) => (
+                    <span
+                      key={m}
+                      className={`badge rounded-pill ${form.moods.includes(m) ? "bg-info text-dark" : "bg-dark text-secondary border border-secondary"}`}
                       style={{ cursor: "pointer" }}
                       onClick={() => toggleMood(m)}
                     >
