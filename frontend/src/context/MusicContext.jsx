@@ -63,6 +63,15 @@ export const MusicProvider = ({ children }) => {
     setIsPlaying(false);
   };
 
+  const closePlayer = () => {
+    audioRef.current.pause();
+    audioRef.current.currentTime = 0;
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+    setCurrentSong(null);
+  };
+
   const updateSongInList = (updatedSong) => {
     setSongs((prev) =>
       prev.map((s) => (s.id === updatedSong.id ? { ...s, ...updatedSong } : s)),
@@ -89,13 +98,12 @@ export const MusicProvider = ({ children }) => {
     };
   }, [playNext]);
 
-  // Stop music when navigating away from playlist routes
+  // Stop music when navigating to auth/admin pages only
   useEffect(() => {
-    const isPlaylistRoute = location.pathname.startsWith('/playlists');
-    const isHomeRoute = location.pathname === '/home';
-    
-    // Stop music if navigating from playlist to non-playlist routes
-    if (!isPlaylistRoute && !isHomeRoute && currentSong) {
+    const isAuthRoute = location.pathname === '/login' || location.pathname === '/register';
+    const isAdminRoute = location.pathname.startsWith('/admin');
+
+    if ((isAuthRoute || isAdminRoute) && currentSong) {
       stopMusic();
     }
   }, [location.pathname, currentSong]);
@@ -114,6 +122,7 @@ export const MusicProvider = ({ children }) => {
         playNext,
         playPrev,
         stopMusic,
+        closePlayer,
         updateSongInList,
       }}
     >
