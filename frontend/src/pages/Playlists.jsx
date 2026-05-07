@@ -17,6 +17,13 @@ export default function Playlists() {
 
   useEffect(() => {
     fetchPlaylists();
+
+    const handlePlaylistCreated = () => fetchPlaylists();
+    window.addEventListener('playlistCreated', handlePlaylistCreated);
+
+    return () => {
+      window.removeEventListener('playlistCreated', handlePlaylistCreated);
+    };
   }, []);
 
   // Inside fetchPlaylists in Playlists.jsx
