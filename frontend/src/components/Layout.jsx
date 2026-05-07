@@ -1,6 +1,7 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { useMusic } from "../context/MusicContext";
 import { Play, Pause, SkipBack, SkipForward, Volume2, X } from "lucide-react";
+import Chatbot from "./Chatbot";
 
 const Layout = () => {
   const { currentSong, isPlaying, playSong, playNext, playPrev, currentTime, duration, audioRef, stopMusic, closePlayer } = useMusic();
@@ -76,6 +77,8 @@ const Layout = () => {
           </div>
         </footer>
       )}
+      
+      {!isAdminPage && <Chatbot />}
     </div>
   );
 };
