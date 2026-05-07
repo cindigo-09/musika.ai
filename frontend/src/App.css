@@ -1,22 +1,54 @@
+/* =============================================
+   MUSIKA.AI — Enhanced App.css
+   Drop-in replacement for your existing file.
+   All original class names preserved + improved.
+   ============================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+/* ── Design Tokens ── */
 :root {
-  --bg-overlay: rgba(5, 5, 8, 0.7);
-  --mana-gold: #fff785;
-  --mana-silver: #b8b8c7;
-  --mana-white: white;
-  --glass: rgba(15, 16, 26, 0.65);
-  --light-weight: 300;
+  --bg-deep:        #050508;
+  --bg-surface:     #0d0d12;
+  --bg-elevated:    #13131a;
+  --bg-overlay:     rgba(5, 5, 8, 0.75);
+
+  --mana-gold:      #f5c842;
+  --mana-gold-dim:  rgba(245, 200, 66, 0.15);
+  --mana-gold-glow: rgba(245, 200, 66, 0.25);
+  --mana-silver:    #b8b8c7;
+  --mana-white:     #f0f0f5;
+
+  --glass:          rgba(13, 13, 18, 0.72);
+  --glass-border:   rgba(255, 255, 255, 0.08);
+  --glass-hover:    rgba(255, 255, 255, 0.04);
+
+  --radius-sm:      6px;
+  --radius-md:      10px;
+  --radius-lg:      16px;
+  --radius-pill:    999px;
+
+  --light-weight:   300;
+  --transition:     180ms ease;
 }
 
-/* Base body styles for global impact */
+/* ── Base ── */
+*, *::before, *::after { box-sizing: border-box; }
+
 body {
+  font-family: 'DM Sans', sans-serif;
   font-weight: var(--light-weight);
+  background-color: var(--bg-deep);
+  color: var(--mana-white);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
-/* Background setup for the GIF */
+
+/* ── Auth Page ── */
 .auth-page-wrapper {
   background:
     linear-gradient(var(--bg-overlay), var(--bg-overlay)),
-    url("./assets/log-reg--bg.gif") no-repeat center center fixed;
+    url('./assets/log-reg--bg.gif') no-repeat center center fixed;
   background-size: cover;
   min-height: 100vh;
   width: 100vw;
@@ -24,92 +56,432 @@ body {
   align-items: center;
 }
 
-/* Glassmorphism Card */
+/* ── Glassmorphism Card ── */
 .musika-card {
   background: var(--glass) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  border-radius: 4px;
-  box-shadow: 0 15px 45px rgba(71, 68, 68, 0.6);
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
-/* Underline-only inputs */
+/* ── Inputs ── */
 .musika-input {
   background: transparent !important;
   border: none !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.637) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18) !important;
   border-radius: 0 !important;
   color: var(--mana-white) !important;
   padding: 10px 0 !important;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  transition: border-color var(--transition);
 }
 
 .musika-input:focus {
   border-bottom: 1px solid var(--mana-gold) !important;
-  box-shadow: none !important;
+  box-shadow: 0 2px 0 rgba(245, 200, 66, 0.2) !important;
+  outline: none !important;
 }
 
-/* This targets the placeholder text specifically */
 .musika-input::placeholder {
-  /* Use a lighter silver or white with low opacity */
-  color: #b8b8c7 !important;
-  opacity: 0.4 !important; /* Adjust this value (0.1 to 1.0) to make it lighter or darker */
-
-  /* Optional: Match the "Mana" aesthetic with a slight letter spacing */
-  letter-spacing: 1px;
+  color: var(--mana-silver) !important;
+  opacity: 0.35 !important;
+  letter-spacing: 0.06em;
   font-style: italic;
 }
 
-/* For cross-browser compatibility (older versions of Edge/Firefox) */
-.musika-input::-webkit-input-placeholder {
-  color: #b8b8c7 !important;
-  opacity: 0.4 !important;
-}
+.musika-input::-webkit-input-placeholder { color: var(--mana-silver) !important; opacity: 0.35 !important; }
+.musika-input:-ms-input-placeholder      { color: var(--mana-silver) !important; opacity: 0.35 !important; }
 
-.musika-input:-ms-input-placeholder {
-  color: #b8b8c7 !important;
-  opacity: 0.4 !important;
-}
+/* ── Password Eye Toggle ── */
 .password-toggle-eye {
   position: absolute;
   right: 0;
   bottom: 12px;
   cursor: pointer;
   color: var(--mana-gold);
-  opacity: 0.6;
+  opacity: 0.55;
+  transition: opacity var(--transition);
 }
+.password-toggle-eye:hover { opacity: 1; }
 
+/* ── Page Title (MUSIKA.AI brand) ── */
 .page-title {
-  font-family: "Space Mono", monospace;
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
   color: var(--mana-gold);
-  letter-spacing: 8px;
-  text-shadow: 0 0 20px rgba(226, 192, 125, 0.3);
+  letter-spacing: 6px;
+  font-size: 1.1rem;
+  text-shadow: 0 0 28px rgba(245, 200, 66, 0.35);
 }
 
-/* Style for the Select/Dropdown */
+/* ── Header ── */
+header.d-flex {
+  background: rgba(5, 5, 8, 0.85) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+/* ── Sidebar Buttons ── */
+aside .btn-warning {
+  background: transparent !important;
+  border: 1px solid rgba(245, 200, 66, 0.35) !important;
+  color: var(--mana-gold) !important;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.78rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border-radius: var(--radius-md) !important;
+  padding: 10px 16px !important;
+  text-align: left !important;
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+  box-shadow: none !important;
+}
+
+aside .btn-warning:hover,
+aside .btn-warning:focus {
+  background: var(--mana-gold-dim) !important;
+  border-color: var(--mana-gold) !important;
+  color: var(--mana-gold) !important;
+}
+
+aside {
+  background: rgba(13, 13, 18, 0.6) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+/* ── Upload Button (top-right in Library) ── */
+main .btn-warning.rounded-pill {
+  background: var(--mana-gold) !important;
+  border: none !important;
+  color: #0d0d12 !important;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.78rem;
+  letter-spacing: 1.5px;
+  font-weight: 700;
+  padding: 10px 22px !important;
+  transition: transform var(--transition), box-shadow var(--transition), filter var(--transition);
+}
+main .btn-warning.rounded-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px var(--mana-gold-glow) !important;
+  filter: brightness(1.08);
+}
+main .btn-warning.rounded-pill:active { transform: translateY(0); }
+
+/* ── Library Page Heading ── */
+main h2.display-6 {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  font-size: 2rem;
+  letter-spacing: 0.02em;
+  color: var(--mana-white);
+}
+
+/* ── Genre Section Headers ── */
+main h4.text-warning {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.72rem !important;
+  letter-spacing: 3px;
+  color: var(--mana-gold) !important;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(245, 200, 66, 0.15);
+  margin-bottom: 12px !important;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+main h4.text-warning::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, rgba(245,200,66,0.15), transparent);
+}
+
+/* ── Song Table ── */
+.table-dark {
+  --bs-table-bg: transparent !important;
+  --bs-table-striped-bg: transparent !important;
+  --bs-table-hover-bg: rgba(255, 255, 255, 0.03) !important;
+  --bs-table-border-color: rgba(255, 255, 255, 0.05) !important;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.table-dark thead tr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.table-dark thead th {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 1.8px;
+  color: rgba(184, 184, 199, 0.5) !important;
+  font-weight: 400;
+  padding: 10px 12px;
+  text-transform: uppercase;
+  background: rgba(13, 13, 18, 0.5);
+}
+
+.table-dark tbody tr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  transition: background var(--transition);
+}
+
+.table-dark tbody tr:hover {
+  background: rgba(245, 200, 66, 0.04) !important;
+}
+
+.table-dark tbody td {
+  padding: 12px 12px;
+  vertical-align: middle;
+  color: rgba(240, 240, 245, 0.85);
+  font-size: 0.9rem;
+}
+
+/* Column widths — keeps # narrow, artist fixed, actions right-aligned */
+.table-dark th:nth-child(1),
+.table-dark td:nth-child(1) { width: 40px; }
+
+.table-dark th:nth-child(3),
+.table-dark td:nth-child(3) {
+  width: 220px;
+  color: rgba(184, 184, 199, 0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.table-dark th:last-child,
+.table-dark td:last-child {
+  width: 120px;
+  text-align: right;
+  padding-right: 16px;
+}
+
+/* Playing indicator pulse */
+.table-dark tbody tr td.text-warning {
+  color: var(--mana-gold) !important;
+  position: relative;
+}
+.table-dark tbody tr td.text-warning::before {
+  content: '▶';
+  font-size: 0.6rem;
+  margin-right: 6px;
+  opacity: 0.7;
+  animation: pulse-play 1.4s ease-in-out infinite;
+}
+@keyframes pulse-play {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 1; }
+}
+
+/* Action buttons in rows */
+.table .btn-link {
+  opacity: 0.5;
+  transition: opacity var(--transition), transform var(--transition);
+}
+.table .btn-link:hover { opacity: 1; transform: scale(1.15); }
+.table .btn-link.text-warning { color: var(--mana-gold) !important; }
+
+/* ── Music Player Footer ── */
+footer.fixed-bottom {
+  background: rgba(5, 5, 8, 0.92) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.07) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Push main content up so the fixed 100px footer never overlaps it */
+.flex-grow-1.overflow-auto {
+  padding-bottom: 116px !important;
+}
+
+footer .fw-bold.text-warning { color: var(--mana-gold) !important; font-size: 0.9rem; }
+
+/* Play/pause center button */
+footer .btn-light.rounded-circle {
+  background: var(--mana-gold) !important;
+  border: none !important;
+  color: #0d0d12 !important;
+  width: 44px;
+  height: 44px;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+footer .btn-light.rounded-circle:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 18px var(--mana-gold-glow);
+}
+
+footer .btn-link.text-white-50 {
+  opacity: 0.45;
+  transition: opacity var(--transition);
+  color: white !important;
+}
+footer .btn-link.text-white-50:hover { opacity: 1; }
+
+/* ── Progress / Range Sliders ── */
+.custom-progress {
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  cursor: pointer;
+  accent-color: var(--mana-gold);
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+}
+.custom-progress::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 13px;
+  width: 13px;
+  background: var(--mana-gold);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 6px var(--mana-gold-glow);
+  transition: transform var(--transition);
+}
+.custom-progress::-webkit-slider-thumb:hover { transform: scale(1.3); }
+
+.form-range {
+  accent-color: var(--mana-gold);
+}
+
+/* ── Modals ── */
+.musika-card[style*="border: 1px solid #ffc107"],
+.musika-card[style*="border: 1px solid rgb(255, 193, 7)"] {
+  border-color: rgba(245, 200, 66, 0.5) !important;
+}
+
+/* Modal headers */
+.musika-card h5.text-warning {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.78rem;
+  letter-spacing: 2.5px;
+  color: var(--mana-gold) !important;
+}
+.musika-card h5.text-info {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.78rem;
+  letter-spacing: 2.5px;
+}
+
+/* Modal action buttons */
+.musika-card .btn-warning {
+  background: var(--mana-gold) !important;
+  border: none !important;
+  color: #0d0d12 !important;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 1.5px;
+  font-weight: 700;
+  border-radius: var(--radius-md) !important;
+  padding: 10px !important;
+  transition: filter var(--transition), transform var(--transition);
+}
+.musika-card .btn-warning:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.musika-card .btn-outline-secondary {
+  border-color: rgba(255,255,255,0.12) !important;
+  color: rgba(255,255,255,0.45) !important;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 1px;
+  border-radius: var(--radius-md) !important;
+  padding: 10px !important;
+  transition: border-color var(--transition), color var(--transition), background var(--transition);
+}
+.musika-card .btn-outline-secondary:hover {
+  border-color: rgba(255,255,255,0.3) !important;
+  color: rgba(255,255,255,0.75) !important;
+  background: rgba(255,255,255,0.04) !important;
+}
+
+/* Playlist list items */
+.list-group-item.bg-dark {
+  background: rgba(13, 13, 18, 0.6) !important;
+  border-color: rgba(255,255,255,0.06) !important;
+  transition: background var(--transition);
+}
+.list-group-item.bg-dark:hover {
+  background: var(--mana-gold-dim) !important;
+}
+
+/* Genre/Mood badges in upload modal */
+.badge.rounded-pill {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all var(--transition);
+  letter-spacing: 0.02em;
+}
+.badge.bg-warning { background: var(--mana-gold) !important; color: #0d0d12 !important; }
+.badge.bg-dark { border-color: rgba(255,255,255,0.12) !important; }
+.badge.bg-dark:hover { border-color: rgba(255,255,255,0.3) !important; background: rgba(255,255,255,0.05) !important; }
+
+/* ── Select Dropdown ── */
 select.musika-input {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23e2c07d' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23f5c842' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0px center;
   padding-right: 20px !important;
 }
-
-/* Ensure dropdown options don't have a white background */
 select.musika-input option {
-  background-color: #0f101a;
+  background-color: #0d0d12;
   color: var(--mana-silver);
 }
-.custom-progress {
-  height: 4px;
-  background: #333;
-  border-radius: 2px;
-  cursor: pointer;
-  accent-color: var(--mana-gold);
+
+/* ── Toast / Success Notification ── */
+.bg-success.rounded-pill {
+  background: rgba(25, 135, 84, 0.9) !important;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.15) !important;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 1px;
 }
 
-.custom-progress::-webkit-slider-thumb {
-  height: 12px;
-  width: 12px;
-  background: var(--mana-gold);
-  border-radius: 50%;
-  cursor: pointer;
+/* ── Scrollbar ── */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(245, 200, 66, 0.2) transparent;
+}
+.custom-scrollbar::-webkit-scrollbar       { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(245, 200, 66, 0.2);
+  border-radius: var(--radius-pill);
+  transition: background var(--transition);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 200, 66, 0.4);
+}
+
+/* ── Subtle noise texture overlay (optional depth) ── */
+.mana-background::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.025;
+  pointer-events: none;
+  z-index: 0;
 }

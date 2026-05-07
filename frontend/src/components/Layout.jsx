@@ -1,9 +1,9 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { useMusic } from "../context/MusicContext";
-import { Play, Pause, SkipBack, SkipForward, Volume2 } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Volume2, X } from "lucide-react";
 
 const Layout = () => {
-  const { currentSong, isPlaying, playSong, playNext, playPrev, currentTime, duration, audioRef } = useMusic();
+  const { currentSong, isPlaying, playSong, playNext, playPrev, currentTime, duration, audioRef, stopMusic, closePlayer } = useMusic();
   const location = useLocation();
 
   const isAuthPage = location.pathname === "/login" || location.pathname === "/register";
@@ -23,7 +23,7 @@ const Layout = () => {
 
   return (
     <div className="mana-background d-flex flex-column vh-100 vw-100">
-      <main className="flex-grow-1 overflow-auto">
+      <main className="flex-grow-1 overflow-hidden">
         <Outlet />
       </main>
 
@@ -52,21 +52,28 @@ const Layout = () => {
           </div>
 
           <div className="d-flex align-items-center justify-content-end gap-2" style={{ width: "25%" }}>
-  <Volume2 size={18} className="text-white-50" />
-  <input 
-    type="range" 
-    className="form-range w-50" 
-    min="0" 
-    max="1" 
-    step="0.01" 
-    defaultValue="1" 
-    onChange={(e) => {
-      if (audioRef.current) {
-        audioRef.current.volume = Number(e.target.value);s
-      }
-    }} 
-  />
-</div>
+            <Volume2 size={18} className="text-white-50" />
+            <input
+              type="range"
+              className="form-range w-50"
+              min="0"
+              max="1"
+              step="0.01"
+              defaultValue="1"
+              onChange={(e) => {
+                if (audioRef.current) {
+                  audioRef.current.volume = Number(e.target.value);
+                }
+              }}
+            />
+            <button
+              className="btn btn-link text-white-50 p-0"
+              title="Exit player"
+              onClick={closePlayer}
+            >
+              <X size={18} />
+            </button>
+          </div>
         </footer>
       )}
     </div>
