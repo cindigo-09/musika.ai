@@ -402,9 +402,6 @@ const Chatbot = () => {
     }
   };
 
-  const handleSuggestionClick = (suggestion) => {
-    setInputValue(suggestion);
-  };
 
   return (
     <>
@@ -431,32 +428,6 @@ const Chatbot = () => {
             </button>
           </div>
 
-          <div className="chatbot-suggestions d-flex gap-2 p-2 overflow-auto">
-            <span
-              className="badge chatbot-badge"
-              onClick={() => handleSuggestionClick("🌙 Late night drive")}
-            >
-              🌙 Late night drive
-            </span>
-            <span
-              className="badge chatbot-badge"
-              onClick={() => handleSuggestionClick("💪 Workout songs")}
-            >
-              💪 Workout songs
-            </span>
-            <span
-              className="badge chatbot-badge"
-              onClick={() => handleSuggestionClick("➕ Create a playlist")}
-            >
-              ➕ Create a playlist
-            </span>
-            <span
-              className="badge chatbot-badge"
-              onClick={() => handleSuggestionClick("🔍 Check a song")}
-            >
-              🔍 Check a song
-            </span>
-          </div>
 
           <div className="chatbot-messages flex-grow-1 p-3 overflow-auto">
             {messages.map((msg, idx) => (
