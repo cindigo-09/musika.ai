@@ -83,13 +83,16 @@ export default function Login() {
           </div>
           <div className="col-md-6 d-flex justify-content-center align-items-center">
             <div className="card musika-card p-5" style={{ width: "420px" }}>
-
               {/* ── LOGIN VIEW ── */}
               {view === "login" && (
                 <>
                   <h3
                     className="mb-5 text-center user-select-none"
-                    style={{ color: "var(--mana-gold)", letterSpacing: "4px", cursor: "default" }}
+                    style={{
+                      color: "var(--mana-gold)",
+                      letterSpacing: "4px",
+                      cursor: "default",
+                    }}
                     onClick={() => {
                       const newCount = clickCount + 1;
                       if (newCount >= 5) {
@@ -108,7 +111,9 @@ export default function Login() {
                         className="form-control musika-input"
                         placeholder="Email"
                         value={form.email}
-                        onChange={(e) => setForm({ ...form, email: e.target.value })}
+                        onChange={(e) =>
+                          setForm({ ...form, email: e.target.value })
+                        }
                         required
                       />
                     </div>
@@ -119,17 +124,22 @@ export default function Login() {
                         className="form-control musika-input"
                         placeholder="Password"
                         value={form.password}
-                        onChange={(e) => setForm({ ...form, password: e.target.value })}
+                        onChange={(e) =>
+                          setForm({ ...form, password: e.target.value })
+                        }
                         required
                       />
                       {form.password.length > 0 && (
                         <span
                           className="password-toggle-eye"
-                          style={{ cursor: "pointer", position: "absolute", right: "15px", top: "12px" }}
+                          style={{
+                            cursor: "pointer",
+                            position: "absolute",
+                            right: "15px",
+                            top: "12px",
+                          }}
                           onClick={() => setShowPassword(!showPassword)}
-                        >
-                          {showPassword ? <EyeOff size={18} color="white" /> : <Eye size={18} color="white" />}
-                        </span>
+                        ></span>
                       )}
                     </div>
 
@@ -138,7 +148,11 @@ export default function Login() {
                       <button
                         type="button"
                         className="btn btn-link p-0 small text-decoration-none"
-                        style={{ color: "var(--mana-gold)", fontSize: "0.8rem", opacity: 0.75 }}
+                        style={{
+                          color: "var(--mana-gold)",
+                          fontSize: "0.8rem",
+                          opacity: 0.75,
+                        }}
                         onClick={() => setView("forgot")}
                       >
                         Forgot Password?
@@ -149,7 +163,10 @@ export default function Login() {
                       type="submit"
                       disabled={loading}
                       className="btn w-100 py-3"
-                      style={{ border: "1px solid var(--mana-gold)", color: "var(--mana-gold)" }}
+                      style={{
+                        border: "1px solid var(--mana-gold)",
+                        color: "var(--mana-gold)",
+                      }}
                     >
                       {loading ? "Authenticating..." : "Login"}
                     </button>
@@ -168,11 +185,18 @@ export default function Login() {
                 <>
                   <h3
                     className="mb-2 text-center"
-                    style={{ color: "var(--mana-gold)", letterSpacing: "3px", fontSize: "1.1rem" }}
+                    style={{
+                      color: "var(--mana-gold)",
+                      letterSpacing: "3px",
+                      fontSize: "1.1rem",
+                    }}
                   >
                     FORGOT PASSWORD
                   </h3>
-                  <p className="text-center small mb-4" style={{ color: "var(--mana-silver)", opacity: 0.7 }}>
+                  <p
+                    className="text-center small mb-4"
+                    style={{ color: "var(--mana-silver)", opacity: 0.7 }}
+                  >
                     Enter your registered email and we'll send you a reset link.
                   </p>
 
@@ -187,7 +211,8 @@ export default function Login() {
                         lineHeight: "1.6",
                       }}
                     >
-                      ✅ If an account with that email exists, a password reset link has been sent. Please check your inbox.
+                      ✅ If an account with that email exists, a password reset
+                      link has been sent. Please check your inbox.
                     </div>
                   ) : (
                     <form onSubmit={handleForgotPassword}>
@@ -204,7 +229,10 @@ export default function Login() {
                           required
                         />
                         {forgotError && (
-                          <div className="mt-2 small" style={{ color: "#ff6b6b" }}>
+                          <div
+                            className="mt-2 small"
+                            style={{ color: "#ff6b6b" }}
+                          >
                             {forgotError}
                           </div>
                         )}
@@ -213,7 +241,10 @@ export default function Login() {
                         type="submit"
                         disabled={loading}
                         className="btn w-100 py-3 mb-3"
-                        style={{ border: "1px solid var(--mana-gold)", color: "var(--mana-gold)" }}
+                        style={{
+                          border: "1px solid var(--mana-gold)",
+                          color: "var(--mana-gold)",
+                        }}
                       >
                         {loading ? "Sending..." : "Send Reset Link"}
                       </button>
@@ -230,7 +261,6 @@ export default function Login() {
                   </button>
                 </>
               )}
-
             </div>
           </div>
         </div>

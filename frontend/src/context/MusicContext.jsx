@@ -11,38 +11,61 @@ import { useLocation } from "react-router-dom";
 const MusicContext = createContext();
 
 export const MusicProvider = ({ children }) => {
-  // Library songs for UI rendering (Home, etc.)
+  // 1. PRIMITIVE STATES FIRST
+  // These are required by almost every other function and effect
   const [librarySongs, setLibrarySongs] = useState([]);
-
-  // Active queue for playback controls (Next/Prev should advance within this)
   const [queueSongs, setQueueSongs] = useState([]);
-
   const [currentSong, setCurrentSong] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [repeatMode, setRepeatMode] = useState("none");
 
+  // 2. SETTINGS & VOLUME INITIALIZATION
+  // Must be defined before the Effects that watch them
+  const [settings, setSettings] = useState(() => {
+    const savedSettings = localStorage.getItem("musika-settings");
+    return savedSettings
+      ? JSON.parse(savedSettings)
+      : {
+          chatbotDisabled: false,
+          volumeNormalization: false,
+          eqPreset: "Flat",
+        };
+  });
+
+  const [volume, setVolume] = useState(() => {
+    const savedVolume = localStorage.getItem("musika-volume");
+    return savedVolume !== null ? parseFloat(savedVolume) : 0.7;
+  });
+
+  // 3. REFS
+  // Define these before any function (like playSong) tries to access .current
   const audioRef = useRef(new Audio());
   const location = useLocation();
 
-  /**
-   * Play a song.
-   * @param {object} song
-   * @param {Array|null} songList - if provided, becomes the active queue (used by Next/Prev)
-   * @param {boolean} forcePlay
-   */
+  // 4. SIDE EFFECTS (LIFECYCLE)
+  // Syncing settings and volume to LocalStorage/Audio Element
+  useEffect(() => {
+    localStorage.setItem("musika-settings", JSON.stringify(settings));
+  }, [settings]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      // Apply volume normalization logic if enabled
+      const finalVolume = settings.volumeNormalization ? volume * 0.8 : volume;
+      audioRef.current.volume = finalVolume;
+    }
+    localStorage.setItem("musika-volume", volume);
+  }, [volume, settings.volumeNormalization]);
+
+  // 5. MEMOIZED LOGIC (useCallback)
+  // These functions depend on the states defined above
   const playSong = async (song, songList = null, forcePlay = false) => {
     if (!song || !song.song_url) return;
 
-    // Only update the active playback queue when a specific list is provided.
-    // Do NOT overwrite librarySongs.
-    if (songList && Array.isArray(songList)) {
+    if (songList && (currentSong?.id !== song.id || forcePlay)) {
       setQueueSongs(songList);
-    } else if (!queueSongs.length) {
-      // If no queue exists yet (e.g., first play from an entry without passing a list),
-      // default queue to library.
-      setQueueSongs(librarySongs);
     }
 
     try {
@@ -72,58 +95,35 @@ export const MusicProvider = ({ children }) => {
 
       const currentIndex = queueSongs.findIndex((s) => s.id === currentSong.id);
 
-      // If the current song isn't found in the active queue, fallback to first.
-      if (currentIndex === -1) {
-        playSong(queueSongs[0], null, true);
-        return;
-      }
-
-      const nextIndex = currentIndex + 1;
-
-      // "Repeat One" only affects automatic transitions (track ended)
       if (isAutomatic && repeatMode === "one") {
         audioRef.current.currentTime = 0;
         audioRef.current.play();
         return;
       }
 
-      // Manual Next: always wrap last -> first
-      if (!isAutomatic && nextIndex >= queueSongs.length) {
-        playSong(queueSongs[0], null, true);
-        return;
-      }
+      const nextIndex = currentIndex + 1;
 
-      // Automatic ended: respect repeat mode
       if (nextIndex >= queueSongs.length) {
-        if (repeatMode === "all") {
+        if (repeatMode === "all" || !isAutomatic) {
           playSong(queueSongs[0], null, true);
         } else {
-          stopMusic();
+          setIsPlaying(false);
+          audioRef.current.pause();
         }
-        return;
+      } else {
+        playSong(queueSongs[nextIndex], null, true);
       }
-
-      playSong(queueSongs[nextIndex], null, true);
     },
     [queueSongs, currentSong, repeatMode],
   );
 
-  const playPrev = () => {
+  const playPrev = useCallback(() => {
     if (queueSongs.length === 0 || !currentSong) return;
-
-    // Restart song if more than 3 seconds have passed
-    if (audioRef.current.currentTime > 3) {
-      audioRef.current.currentTime = 0;
-      return;
-    }
-
     const currentIndex = queueSongs.findIndex((s) => s.id === currentSong.id);
-    let prevIndex = currentIndex - 1;
-    if (prevIndex < 0) {
-      prevIndex = queueSongs.length - 1;
-    }
+    const prevIndex =
+      currentIndex <= 0 ? queueSongs.length - 1 : currentIndex - 1;
     playSong(queueSongs[prevIndex], null, true);
-  };
+  }, [queueSongs, currentSong]);
 
   const toggleRepeat = () => {
     setRepeatMode((prev) => {
@@ -133,90 +133,55 @@ export const MusicProvider = ({ children }) => {
     });
   };
 
-  const stopMusic = () => {
-    audioRef.current.pause();
-    audioRef.current.currentTime = 0;
+  const closePlayer = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+    }
+    setCurrentSong(null);
     setIsPlaying(false);
   };
 
-  const closePlayer = () => {
-    stopMusic();
-    setCurrentTime(0);
-    setDuration(0);
-    setCurrentSong(null);
-    setQueueSongs([]);
-  };
-
-  const updateSongInList = (updatedSong) => {
-    // Update library
-    setLibrarySongs((prev) =>
-      prev.map((s) => (s.id === updatedSong.id ? { ...s, ...updatedSong } : s)),
-    );
-
-    // Update active queue
-    setQueueSongs((prev) =>
-      prev.map((s) => (s.id === updatedSong.id ? { ...s, ...updatedSong } : s)),
-    );
-
-    // Sync the current player state if the playing song was edited
-    if (currentSong?.id === updatedSong.id) {
-      setCurrentSong((prev) => ({
-        ...prev,
-        ...updatedSong,
-        genre: updatedSong.genre,
-        moods: updatedSong.moods,
-      }));
-    }
-  };
-
+  // 6. AUDIO EVENT LISTENERS
   useEffect(() => {
     const audio = audioRef.current;
-    const onLoadedMetadata = () => setDuration(audio.duration);
     const onTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const onMetadata = () => setDuration(audio.duration);
     const onEnded = () => playNext(true);
 
-    audio.addEventListener("loadedmetadata", onLoadedMetadata);
     audio.addEventListener("timeupdate", onTimeUpdate);
+    audio.addEventListener("loadedmetadata", onMetadata);
     audio.addEventListener("ended", onEnded);
 
     return () => {
-      audio.removeEventListener("loadedmetadata", onLoadedMetadata);
       audio.removeEventListener("timeupdate", onTimeUpdate);
+      audio.removeEventListener("loadedmetadata", onMetadata);
       audio.removeEventListener("ended", onEnded);
     };
   }, [playNext]);
 
-  useEffect(() => {
-    const isAuthRoute = ["/login", "/register"].includes(location.pathname);
-    if (
-      (isAuthRoute || location.pathname.startsWith("/admin")) &&
-      currentSong
-    ) {
-      stopMusic();
-    }
-  }, [location.pathname, currentSong]);
-
+  // 7. CONTEXT PROVIDER RENDER
   return (
     <MusicContext.Provider
       value={{
-        // Keep existing external API names mostly stable for minimal changes:
-        // - Home uses `songs` for rendering; map it to librarySongs
         songs: librarySongs,
         setSongs: setLibrarySongs,
-        queueSongs,
         currentSong,
         isPlaying,
         currentTime,
+        setCurrentTime,
         duration,
         repeatMode,
-        audioRef,
+        volume,
+        setVolume,
         playSong,
         playNext,
         playPrev,
         toggleRepeat,
-        stopMusic,
         closePlayer,
-        updateSongInList,
+        audioRef,
+        settings,
+        setSettings,
       }}
     >
       {children}

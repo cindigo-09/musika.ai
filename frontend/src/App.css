@@ -4,7 +4,7 @@
    All original class names preserved + improved.
    ============================================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap");
 
 /* ── Design Tokens ── */
 :root {
@@ -40,7 +40,7 @@
 }
 
 body {
-  font-family: 'DM Sans', sans-serif;
+  font-family: "DM Sans", sans-serif;
   font-weight: var(--light-weight);
   background-color: var(--bg-deep);
   color: var(--mana-white);
@@ -52,7 +52,7 @@ body {
 .auth-page-wrapper {
   background:
     linear-gradient(var(--bg-overlay), var(--bg-overlay)),
-    url('./assets/log-reg--bg.gif') no-repeat center center fixed;
+    url("./assets/log-reg--bg.gif") no-repeat center center fixed;
   background-size: cover;
   min-height: 100vh;
   width: 100vw;
@@ -80,7 +80,7 @@ body {
   border-radius: 0 !important;
   color: var(--mana-white) !important;
   padding: 10px 0 !important;
-  font-family: 'DM Sans', sans-serif;
+  font-family: "DM Sans", sans-serif;
   font-size: 0.95rem;
   transition: border-color var(--transition);
 }
@@ -125,7 +125,7 @@ body {
 
 /* ── Page Title (MUSIKA.AI brand) ── */
 .page-title {
-  font-family: 'Space Mono', monospace;
+  font-family: "Space Mono", monospace;
   font-weight: 700;
   color: var(--mana-gold);
   letter-spacing: 6px;
@@ -146,7 +146,7 @@ aside .btn-warning {
   background: transparent !important;
   border: 1px solid rgba(245, 200, 66, 0.35) !important;
   color: var(--mana-gold) !important;
-  font-family: 'Space Mono', monospace;
+  font-family: "Space Mono", monospace;
   font-size: 0.78rem;
   letter-spacing: 1.5px;
   text-transform: uppercase;
@@ -156,7 +156,10 @@ aside .btn-warning {
   display: flex !important;
   align-items: center;
   gap: 10px;
-  transition: background var(--transition), border-color var(--transition), color var(--transition);
+  transition:
+    background var(--transition),
+    border-color var(--transition),
+    color var(--transition);
   box-shadow: none !important;
 }
 
@@ -177,12 +180,15 @@ main .btn-warning.rounded-pill {
   background: var(--mana-gold) !important;
   border: none !important;
   color: #0d0d12 !important;
-  font-family: 'Space Mono', monospace;
+  font-family: "Space Mono", monospace;
   font-size: 0.78rem;
   letter-spacing: 1.5px;
   font-weight: 700;
   padding: 10px 22px !important;
-  transition: transform var(--transition), box-shadow var(--transition), filter var(--transition);
+  transition:
+    transform var(--transition),
+    box-shadow var(--transition),
+    filter var(--transition);
 }
 
 main .btn-warning.rounded-pill:hover {
@@ -197,7 +203,7 @@ main .btn-warning.rounded-pill:active {
 
 /* ── Library Page Heading ── */
 main h2.display-6 {
-  font-family: 'DM Sans', sans-serif;
+  font-family: "DM Sans", sans-serif;
   font-weight: 500;
   font-size: 2rem;
   letter-spacing: 0.02em;
@@ -206,7 +212,7 @@ main h2.display-6 {
 
 /* ── Genre Section Headers ── */
 main h4.text-warning {
-  font-family: 'Space Mono', monospace;
+  font-family: "Space Mono", monospace;
   font-size: 0.72rem !important;
   letter-spacing: 3px;
   color: var(--mana-gold) !important;
@@ -219,7 +225,7 @@ main h4.text-warning {
 }
 
 main h4.text-warning::after {
-  content: '';
+  content: "";
   flex: 1;
   height: 1px;
   background: linear-gradient(to right, rgba(245, 200, 66, 0.15), transparent);
@@ -240,7 +246,7 @@ main h4.text-warning::after {
 }
 
 .table-dark thead th {
-  font-family: 'Space Mono', monospace;
+  font-family: "Space Mono", monospace;
   font-size: 0.68rem;
   letter-spacing: 1.8px;
   color: rgba(184, 184, 199, 0.5) !important;
@@ -296,7 +302,7 @@ main h4.text-warning::after {
 }
 
 .table-dark tbody tr td.text-warning::before {
-  content: '▶';
+  content: "▶";
   font-size: 0.6rem;
   margin-right: 6px;
   opacity: 0.7;
@@ -304,7 +310,6 @@ main h4.text-warning::after {
 }
 
 @keyframes pulse-play {
-
   0%,
   100% {
     opacity: 0.4;
@@ -318,7 +323,9 @@ main h4.text-warning::after {
 /* Action buttons in rows */
 .table .btn-link {
   opacity: 0.5;
-  transition: opacity var(--transition), transform var(--transition);
+  transition:
+    opacity var(--transition),
+    transform var(--transition);
 }
 
 .table .btn-link:hover {
@@ -358,7 +365,9 @@ footer .btn-light.rounded-circle {
   display: flex !important;
   align-items: center;
   justify-content: center;
-  transition: transform var(--transition), box-shadow var(--transition);
+  transition:
+    transform var(--transition),
+    box-shadow var(--transition);
 }
 
 footer .btn-light.rounded-circle:hover {
@@ -415,14 +424,14 @@ footer .btn-link.text-white-50:hover {
 
 /* Modal headers */
 .musika-card h5.text-warning {
-  font-family: 'Space Mono', monospace;
+  font-family: "Space Mono", monospace;
   font-size: 0.78rem;
   letter-spacing: 2.5px;
   color: var(--mana-gold) !important;
 }
 
 .musika-card h5.text-info {
-  font-family: 'Space Mono', monospace;
+  font-family: "Space Mono", monospace;
   font-size: 0.78rem;
   letter-spacing: 2.5px;
 }
@@ -432,13 +441,15 @@ footer .btn-link.text-white-50:hover {
   background: var(--mana-gold) !important;
   border: none !important;
   color: #0d0d12 !important;
-  font-family: 'Space Mono', monospace;
+  font-family: "Space Mono", monospace;
   font-size: 0.75rem;
   letter-spacing: 1.5px;
   font-weight: 700;
   border-radius: var(--radius-md) !important;
   padding: 10px !important;
-  transition: filter var(--transition), transform var(--transition);
+  transition:
+    filter var(--transition),
+    transform var(--transition);
 }
 
 .musika-card .btn-warning:hover {
@@ -449,12 +460,15 @@ footer .btn-link.text-white-50:hover {
 .musika-card .btn-outline-secondary {
   border-color: rgba(255, 255, 255, 0.12) !important;
   color: rgba(255, 255, 255, 0.45) !important;
-  font-family: 'Space Mono', monospace;
+  font-family: "Space Mono", monospace;
   font-size: 0.75rem;
   letter-spacing: 1px;
   border-radius: var(--radius-md) !important;
   padding: 10px !important;
-  transition: border-color var(--transition), color var(--transition), background var(--transition);
+  transition:
+    border-color var(--transition),
+    color var(--transition),
+    background var(--transition);
 }
 
 .musika-card .btn-outline-secondary:hover {
@@ -476,7 +490,7 @@ footer .btn-link.text-white-50:hover {
 
 /* Genre/Mood badges in upload modal */
 .badge.rounded-pill {
-  font-family: 'DM Sans', sans-serif;
+  font-family: "DM Sans", sans-serif;
   font-size: 0.75rem;
   font-weight: 500;
   padding: 5px 12px;
@@ -516,9 +530,13 @@ select.musika-input option {
 /* ── Toast / Success Notification ── */
 .bg-success.rounded-pill {
   background: rgba(25, 135, 84, 0.9) !important;
+
+  /* Add the webkit prefix for Safari support and to clear the warning */
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
+
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  font-family: 'Space Mono', monospace;
+  font-family: "Space Mono", monospace;
   font-size: 0.72rem;
   letter-spacing: 1px;
 }
@@ -549,7 +567,7 @@ select.musika-input option {
 
 /* ── Subtle noise texture overlay (optional depth) ── */
 .mana-background::before {
-  content: '';
+  content: "";
   position: fixed;
   inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
@@ -567,7 +585,7 @@ select.musika-input option {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: #1DB954;
+  background: #1db954;
   /* Spotify green accent as requested */
   color: white;
   border: none;
@@ -576,7 +594,9 @@ select.musika-input option {
   justify-content: center;
   cursor: pointer;
   z-index: 1050;
-  transition: transform 0.2s ease, background 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
 }
 
 .chatbot-toggle-btn:hover {
@@ -640,7 +660,7 @@ select.musika-input option {
 }
 
 .user-bubble {
-  background: #1DB954;
+  background: #1db954;
   color: white;
   border-bottom-right-radius: 4px;
 }
@@ -667,11 +687,11 @@ select.musika-input option {
 
 .chatbot-text-input:focus {
   box-shadow: 0 0 0 2px rgba(29, 185, 84, 0.3) !important;
-  border-color: #1DB954 !important;
+  border-color: #1db954 !important;
 }
 
 .chatbot-send-btn {
-  background: #1DB954 !important;
+  background: #1db954 !important;
   color: white !important;
   border: none !important;
   border-radius: 50% !important;
@@ -707,7 +727,6 @@ select.musika-input option {
 }
 
 @keyframes typing {
-
   0%,
   80%,
   100% {
@@ -744,7 +763,7 @@ select.musika-input option {
   font-size: 1.1rem;
   margin-top: 0.5rem;
   margin-bottom: 0.5rem;
-  font-family: 'Space Mono', monospace;
+  font-family: "Space Mono", monospace;
   color: var(--mana-gold);
 }
 
@@ -759,4 +778,172 @@ select.musika-input option {
     right: 20px;
     bottom: 80px;
   }
+}
+.custom-progress {
+  accent-color: #ffc107; /* Bootstrap Warning Yellow */
+  cursor: pointer;
+  height: 6px;
+}
+
+.custom-progress::-webkit-slider-runnable-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.hover-white:hover {
+  color: white !important;
+  transition: 0.2s ease;
+}
+
+.layout-content {
+  padding-bottom: 120px; /* Adjust based on your footer height */
+}
+.main-wrapper {
+  padding-bottom: 110px; /* This creates space for the player footer */
+  min-height: 100vh;
+}
+/* Creates a safe zone for the music player height */
+.pb-player {
+  padding-bottom: 120px !important;
+}
+
+/* Ensure the playlist cards have a cursor and high enough z-index to be detected */
+.playlist-card {
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+}
+/* 1. Prevent the footer from blocking the whole bottom area */
+footer.fixed-bottom {
+  pointer-events: none; /* Allows clicks to pass through the empty space */
+  height: 110px; /* Fix the height */
+}
+
+/* 2. Re-enable clicks ONLY for the buttons/sliders inside the footer */
+footer.fixed-bottom > * {
+  pointer-events: auto;
+}
+
+/* 3. Add the safe zone for the playlists */
+.content-area.player-active {
+  padding-bottom: 130px !important; /* Pushes playlists above the player */
+}
+
+/* 4. Ensure the playlist cards are on top of any background layers */
+.playlist-card,
+.card {
+  position: relative;
+  z-index: 5;
+  cursor: pointer !important;
+}
+/* Fix for the footer height to match your padding */
+footer.fixed-bottom {
+  height: 110px !important;
+  display: flex !important;
+  align-items: center !important;
+  pointer-events: none !important; /* Clicks pass through the footer bar */
+}
+
+footer.fixed-bottom > div,
+footer.fixed-bottom button,
+footer.fixed-bottom input {
+  pointer-events: auto !important; /* Clicks work on the actual buttons */
+}
+/* --- Enhanced Spotify-style Playlist Cards --- */
+.playlist-card-spotify {
+  background: #181818;
+  /* Smooth transition for background, transform, and border */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  padding: 16px; /* Professional spacing inside the card */
+  border-radius: 8px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid transparent; /* Prevents layout shift on hover */
+}
+
+.playlist-card-spotify:hover {
+  background: #282828;
+  transform: translateY(-4px); /* Subtle lift effect */
+  border: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border on hover */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* Container for the Image */
+.card-image-container {
+  position: relative;
+  margin-bottom: 16px; /* Margin between image and title */
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* The floating play button effect */
+.play-button-floating {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: all 0.3s ease;
+  z-index: 2;
+}
+
+.playlist-card-spotify:hover .play-button-floating {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Text styling for better hierarchy */
+.playlist-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playlist-description {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #b3b3b3;
+  line-height: 1.4;
+  /* Allows for two lines of text then truncates */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* --- Utilities --- */
+.aspect-ratio-square {
+  aspect-ratio: 1/1;
+  width: 100%;
+  object-fit: cover;
+}
+.custom-switch:checked {
+  background-color: #ffc107 !important;
+  border-color: #ffc107 !important;
+}
+.x-small {
+  font-size: 0.75rem;
+}
+.letter-spacing-1 {
+  letter-spacing: 1px;
+}
+/* Ensure the root elements allow for full height */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background-color: #050508;
+}
+
+/* Ensure custom-scrollbar doesn't hide content */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
 }

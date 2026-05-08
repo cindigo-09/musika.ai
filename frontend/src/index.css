@@ -1,4 +1,4 @@
-/* This forces the background to midnight regardless of Vite defaults */
+/* index.css */
 :root {
   background-color: #050508 !important;
   color-scheme: dark;
@@ -9,9 +9,11 @@ body,
 #root {
   margin: 0;
   padding: 0;
-  width: 100%;
-  height: 100%;
-  background-color: #050508 !important;
+  width: 100vw;
+  height: 100vh;
+  background-color: #050508 !important; /* Force black */
+  color: #f0f0f5 !important;
+  overflow: hidden;
 }
 
 body {
@@ -21,7 +23,8 @@ body {
   min-height: 100vh;
 }
 /* Apply to the entire project */
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   width: 100%;

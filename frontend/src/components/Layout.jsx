@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import { useMusic } from "../context/MusicContext";
 import {
   Play,
@@ -6,6 +6,7 @@ import {
   SkipBack,
   SkipForward,
   Repeat,
+  Repeat1,
   Volume2,
   X,
 } from "lucide-react";
@@ -13,32 +14,22 @@ import Chatbot from "./Chatbot";
 
 const Layout = () => {
   const {
-    songs,
     currentSong,
     isPlaying,
     playSong,
     playNext,
     playPrev,
-    currentTime,
-    duration,
-    audioRef,
-    stopMusic,
-    closePlayer,
     repeatMode,
     toggleRepeat,
+    currentTime,
+    setCurrentTime,
+    duration,
+    audioRef,
+    closePlayer,
+    volume,
+    setVolume,
+    settings, // Added settings to handle the AI toggle
   } = useMusic();
-  const location = useLocation();
-
-  const isAuthPage =
-    location.pathname === "/login" ||
-    location.pathname === "/register" ||
-    location.pathname === "/reset-password";
-  const isAdminPage = location.pathname.startsWith("/admin");
-
-  const handleSeek = (e) => {
-    const time = Number(e.target.value);
-    audioRef.current.currentTime = time;
-  };
 
   const formatTime = (time) => {
     if (isNaN(time)) return "0:00";
@@ -47,108 +38,136 @@ const Layout = () => {
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
-  return (
-    <div className="mana-background d-flex flex-column vh-100 vw-100">
-      <main className="flex-grow-1 overflow-hidden">
-        <Outlet />
-      </main>
+  const handleSeek = (e) => {
+    const newTime = Number(e.target.value);
+    setCurrentTime(newTime);
+    if (audioRef.current) {
+      audioRef.current.currentTime = newTime;
+    }
+  };
 
-      {!isAuthPage && !isAdminPage && currentSong && (
+  return (
+    <div className="layout">
+      <Outlet />
+
+      {currentSong && (
         <footer
-          className="fixed-bottom bg-black border-top border-secondary d-flex align-items-center justify-content-between px-4"
-          style={{ height: "100px", zIndex: 1030 }}
+          className="fixed-bottom bg-dark border-top border-secondary p-3 text-white d-flex align-items-center justify-content-between"
+          style={{ zIndex: 1050 }}
         >
+          {/* 1. SONG INFO */}
           <div
             className="d-flex align-items-center gap-3"
             style={{ width: "25%" }}
           >
-            <div className="text-truncate">
-              <div className="small fw-bold text-warning">
-                {currentSong?.title}
+            <img
+              src={currentSong.cover_url}
+              alt=""
+              className="rounded shadow"
+              width="50"
+              height="50"
+              style={{ objectFit: "cover" }}
+            />
+            <div className="overflow-hidden">
+              <div className="fw-bold text-truncate">{currentSong.title}</div>
+              <div className="small text-secondary text-truncate">
+                {currentSong.artist}
               </div>
-              <div className="text-white-50 small">{currentSong?.artist}</div>
             </div>
           </div>
 
-          <div
-            className="d-flex flex-column align-items-center gap-2"
-            style={{ width: "50%" }}
-          >
-            <div className="d-flex align-items-center gap-4">
-              <button
-                className="btn btn-link text-white-50 p-0"
+          {/* 2. PLAYER CONTROLS */}
+          <div className="flex-grow-1 d-flex flex-column align-items-center">
+            <div className="d-flex align-items-center gap-4 mb-2">
+              <SkipBack
                 onClick={playPrev}
-              >
-                <SkipBack size={22} />
-              </button>
+                className="cursor-pointer text-white-50 hover-white"
+                size={22}
+              />
+
               <button
-                className={`btn btn-link p-0 ${repeatMode !== "none" ? "text-warning" : "text-white-50"}`}
-                title={`Repeat: ${repeatMode}`}
+                className={`btn btn-link p-0 shadow-none ${repeatMode !== "none" ? "text-warning" : "text-white-50"}`}
                 onClick={toggleRepeat}
               >
-                <Repeat size={22} />
+                {repeatMode === "one" ? (
+                  <Repeat1 size={22} />
+                ) : (
+                  <Repeat size={22} />
+                )}
               </button>
+
               <button
-                className="btn btn-light rounded-circle p-2"
                 onClick={() => playSong(currentSong)}
+                className="btn btn-warning rounded-circle d-flex align-items-center justify-content-center shadow"
+                style={{ width: "45px", height: "45px" }}
               >
-                {isPlaying ? <Pause size={28} /> : <Play size={28} />}
+                {isPlaying ? (
+                  <Pause fill="black" size={22} />
+                ) : (
+                  <Play fill="black" size={22} />
+                )}
               </button>
-              <button
-                className="btn btn-link text-white-50 p-0"
+
+              <SkipForward
                 onClick={() => playNext(false)}
-              >
-                <SkipForward size={22} />
-              </button>
+                className="cursor-pointer text-white-50 hover-white"
+                size={22}
+              />
             </div>
-            <div className="d-flex align-items-center gap-2 w-100">
-              <span className="small text-white-50">
+
+            <div className="d-flex align-items-center gap-2 w-100 px-5">
+              <span
+                className="small text-secondary"
+                style={{ minWidth: "40px" }}
+              >
                 {formatTime(currentTime)}
               </span>
               <input
                 type="range"
-                className="form-range custom-progress"
+                className="form-range flex-grow-1 custom-progress"
                 min="0"
                 max={duration || 0}
                 value={currentTime}
                 onChange={handleSeek}
               />
-              <span className="small text-white-50">
+              <span
+                className="small text-secondary"
+                style={{ minWidth: "40px" }}
+              >
                 {formatTime(duration)}
               </span>
             </div>
           </div>
 
+          {/* 3. VOLUME & CLOSE */}
           <div
-            className="d-flex align-items-center justify-content-end gap-2"
+            className="d-flex align-items-center justify-content-end gap-3"
             style={{ width: "25%" }}
           >
-            <Volume2 size={18} className="text-white-50" />
+            <Volume2 size={20} className="text-secondary" />
             <input
               type="range"
-              className="form-range w-50"
+              className="form-range"
+              style={{ width: "80px" }}
               min="0"
               max="1"
               step="0.01"
-              defaultValue="1"
-              onChange={(e) => {
-                if (audioRef.current) {
-                  audioRef.current.volume = Number(e.target.value);
-                }
-              }}
+              value={volume}
+              onChange={(e) => setVolume(Number(e.target.value))}
             />
             <button
-              className="btn btn-link text-white-50 p-0"
-              title="Exit player"
+              className="btn btn-link text-white-50 p-0 ms-2"
               onClick={closePlayer}
             >
-              <X size={18} />
+              <X size={20} />
             </button>
           </div>
         </footer>
       )}
 
-      {!isAdminPage && !isAuthPage && <Chatbot />}
+      {/* CHATBOT CONDITIONAL RENDERING */}
+      {/* settings.chatbotDisabled controls the global visibility of the AI Assistant */}
+      {!settings.chatbotDisabled && <Chatbot />}
     </div>
   );
 };

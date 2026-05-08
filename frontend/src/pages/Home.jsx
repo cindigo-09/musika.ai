@@ -356,23 +356,32 @@ export default function Home() {
   };
 
   const handleUpdateSong = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // Prevent page refresh
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("songs")
+        .update({
+          title: editingSong.title, // Use editingSong, not form
+          artist: editingSong.artist,
+          // Convert arrays to comma-separated strings for your VARCHAR columns
+          genre: Array.isArray(editingSong.genre)
+            ? editingSong.genre.join(",")
+            : editingSong.genre,
+          mood_tag: (editingSong.moods || []).join(","),
+        })
+        .eq("id", editingSong.id);
 
-    const { data, error } = await supabase
-      .from("songs")
-      .update({
-        title: editingSong.title,
-        artist: editingSong.artist,
-        genre: editingSong.genre, // New field
-        moods: editingSong.moods, // New field
-      })
-      .eq("id", editingSong.id)
-      .select()
-      .single();
+      if (error) throw error;
 
-    if (!error && data) {
-      updateSongInList(data);
+      triggerSuccess("Track updated!");
+      fetchSongs();
       setShowEditModal(false);
+    } catch (err) {
+      console.error("Update Error:", err);
+      alert(err.message);
+    } finally {
+      setLoading(false); // Fix: Set to false, not true
     }
   };
 
@@ -510,7 +519,11 @@ export default function Home() {
                     className="btn btn-link text-info p-0 me-3"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setEditingSong(s);
+                      // Convert the comma-separated string from DB into an array for the state
+                      const moodArray = s.mood_tag
+                        ? s.mood_tag.split(",").map((m) => m.trim())
+                        : [];
+                      setEditingSong({ ...s, moods: moodArray });
                       setShowEditModal(true);
                     }}
                   >
@@ -788,26 +801,37 @@ export default function Home() {
               <div className="mb-4">
                 <label className="text-secondary small mb-2">MOODS</label>
                 <div className="d-flex flex-wrap gap-2">
-                  {MOODS.map((m) => (
-                    <span
-                      key={m}
-                      className={`badge rounded-pill ${
-                        editingSong.moods?.includes(m)
-                          ? "bg-info text-dark"
-                          : "bg-dark text-secondary border border-secondary"
-                      }`}
-                      style={{ cursor: "pointer" }}
-                      onClick={() => {
-                        const currentMoods = editingSong.moods || [];
-                        const newMoods = currentMoods.includes(m)
-                          ? currentMoods.filter((item) => item !== m)
-                          : [...currentMoods, m];
-                        setEditingSong({ ...editingSong, moods: newMoods });
-                      }}
-                    >
-                      {m}
-                    </span>
-                  ))}
+                  {MOODS.map((m) => {
+                    // Ensure we are working with an array for the UI check
+                    const currentMoods = Array.isArray(editingSong.moods)
+                      ? editingSong.moods
+                      : editingSong.mood_tag
+                        ? editingSong.mood_tag.split(",")
+                        : [];
+
+                    const isSelected = currentMoods.includes(m);
+
+                    return (
+                      <span
+                        key={m}
+                        className={`badge rounded-pill ${
+                          isSelected
+                            ? "bg-info text-dark" // "Lights up" when chosen
+                            : "bg-dark text-secondary border border-secondary"
+                        }`}
+                        style={{ cursor: "pointer", transition: "all 0.2s" }}
+                        onClick={() => {
+                          const newMoods = isSelected
+                            ? currentMoods.filter((item) => item !== m) // Remove if exists
+                            : [...currentMoods, m]; // Add if new
+
+                          setEditingSong({ ...editingSong, moods: newMoods });
+                        }}
+                      >
+                        {m}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
 

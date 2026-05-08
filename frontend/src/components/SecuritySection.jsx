@@ -1,126 +1,131 @@
 import React, { useState } from "react";
+import { KeyRound, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { supabase } from "../supabaseClient";
-import { useNavigate } from "react-router-dom";
-import { ArrowBigRight } from "lucide-react";
+import { useMusic } from "../context/MusicContext";
+export default function SecuritySection() {
+  const [passwords, setPasswords] = useState({
+    current: "",
+    new: "",
+    confirm: "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState({ message: "", type: "" });
 
-function SecuritySection() {
-  const navigate = useNavigate();
-
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const handleChangePassword = async (e) => {
+  const handleUpdatePassword = async (e) => {
     e.preventDefault();
 
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      alert("Please fill out all password fields.");
+    if (passwords.new !== passwords.confirm) {
+      setStatus({ message: "New passwords do not match.", type: "danger" });
       return;
     }
 
-    if (newPassword !== confirmPassword) {
-      alert("New password and confirmation do not match.");
+    if (passwords.new.length < 6) {
+      setStatus({
+        message: "Password must be at least 6 characters.",
+        type: "danger",
+      });
       return;
     }
 
-    setSaving(true);
+    setLoading(true);
+    setStatus({ message: "", type: "" });
+
     try {
-      // Supabase requires re-auth for sensitive operations depending on your setup.
-      // We'll re-login with the current password, then update password.
-      const { data: authData, error: signInError } =
-        await supabase.auth.signInWithPassword({
-          email: (await supabase.auth.getUser()).data.user?.email,
-          password: currentPassword,
-        });
-
-      if (signInError) throw signInError;
-
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword,
+      const { error } = await supabase.auth.updateUser({
+        password: passwords.new,
       });
 
-      if (updateError) throw updateError;
+      if (error) throw error;
 
-      alert("Password updated successfully.");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-    } catch (err) {
-      // Try to show a useful error message
-      alert(err?.message || "Failed to change password.");
+      setStatus({ message: "Password updated successfully!", type: "success" });
+      setPasswords({ current: "", new: "", confirm: "" });
+    } catch (error) {
+      setStatus({ message: error.message, type: "danger" });
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="d-flex flex-column gap-4">
-      <section className="p-4 rounded-4" style={{ backgroundColor: "#191c22" }}>
-        <h6 className="text-uppercase fw-bold mb-4 d-flex align-items-center gap-2">
-          <span className="material-symbols-outlined text-warning">
-            encrypted
-          </span>{" "}
-          Security
-        </h6>
+    <div className="musika-card p-4 border border-secondary rounded-4 bg-dark bg-opacity-25 shadow-sm">
+      <h6 className="text-warning mb-4 d-flex align-items-center gap-2 text-uppercase fw-bold">
+        <KeyRound size={18} /> Update Password
+      </h6>
 
-        <div className="list-group list-group-flush gap-3">
-          <div className="list-group-item bg-transparent border rounded p-3 d-flex justify-content-between align-items-center">
-            <span className="small fw-bold text-light">Change Password</span>
-            <span className="material-symbols-outlined text-muted small text-light">
-              <ArrowBigRight color="white" />
-            </span>
-          </div>
-
-          <form onSubmit={handleChangePassword} className="p-2">
-            <div className="mb-3">
-              <label className="small text-warning text-uppercase fw-bold mb-2 d-block">
-                Current Password
-              </label>
-              <input
-                type="password"
-                className="form-control bg-transparent border-0 border-bottom border-secondary rounded-0 text-light px-0"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-              />
-            </div>
-
-            <div className="mb-3">
-              <label className="small text-warning text-uppercase fw-bold mb-2 d-block">
-                New Password
-              </label>
-              <input
-                type="password"
-                className="form-control bg-transparent border-0 border-bottom border-secondary rounded-0 text-light px-0"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
-            </div>
-
-            <div className="mb-3">
-              <label className="small text-warning text-uppercase fw-bold mb-2 d-block">
-                Confirm New Password
-              </label>
-              <input
-                type="password"
-                className="form-control bg-transparent border-0 border-bottom border-secondary rounded-0 text-light px-0"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={saving}
-              className="btn btn-warning text-dark px-5 py-2 fw-bold text-uppercase w-100"
-            >
-              {saving ? "Updating..." : "Update Password"}
-            </button>
-          </form>
+      <form onSubmit={handleUpdatePassword}>
+        <div className="mb-3">
+          <label className="x-small text-secondary text-uppercase mb-1 d-block">
+            Current Password
+          </label>
+          <input
+            type="password"
+            className="form-control bg-transparent border-secondary text-white shadow-none"
+            placeholder="••••••••"
+            value={passwords.current}
+            onChange={(e) =>
+              setPasswords({ ...passwords, current: e.target.value })
+            }
+            required
+          />
         </div>
-      </section>
+
+        <div className="mb-3">
+          <label className="x-small text-secondary text-uppercase mb-1 d-block">
+            New Password
+          </label>
+          <input
+            type="password"
+            className="form-control bg-transparent border-secondary text-white shadow-none"
+            placeholder="••••••••"
+            value={passwords.new}
+            onChange={(e) =>
+              setPasswords({ ...passwords, new: e.target.value })
+            }
+            required
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="x-small text-secondary text-uppercase mb-1 d-block">
+            Confirm Password
+          </label>
+          <input
+            type="password"
+            className="form-control bg-transparent border-secondary text-white shadow-none"
+            placeholder="••••••••"
+            value={passwords.confirm}
+            onChange={(e) =>
+              setPasswords({ ...passwords, confirm: e.target.value })
+            }
+            required
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="btn btn-warning btn-sm w-100 fw-bold py-2 shadow-sm d-flex align-items-center justify-content-center gap-2"
+        >
+          {loading ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            "CHANGE PASSWORD"
+          )}
+        </button>
+      </form>
+
+      {status.message && (
+        <div
+          className={`alert alert-${status.type} py-2 x-small mt-3 mb-0 d-flex align-items-center gap-2 justify-content-center fw-bold`}
+        >
+          {status.type === "success" ? (
+            <CheckCircle2 size={14} />
+          ) : (
+            <AlertCircle size={14} />
+          )}
+          {status.message}
+        </div>
+      )}
     </div>
   );
 }
-
-export default SecuritySection;

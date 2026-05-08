@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Music, Loader2, Play, AlertCircle } from "lucide-react";
+import { Plus, Music, Loader2, Play, AlertCircle, Heart } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
@@ -17,16 +17,13 @@ export default function Playlists() {
 
   useEffect(() => {
     fetchPlaylists();
-
     const handlePlaylistCreated = () => fetchPlaylists();
-    window.addEventListener('playlistCreated', handlePlaylistCreated);
-
+    window.addEventListener("playlistCreated", handlePlaylistCreated);
     return () => {
-      window.removeEventListener('playlistCreated', handlePlaylistCreated);
+      window.removeEventListener("playlistCreated", handlePlaylistCreated);
     };
   }, []);
 
-  // Inside fetchPlaylists in Playlists.jsx
   const fetchPlaylists = async () => {
     try {
       const {
@@ -36,12 +33,7 @@ export default function Playlists() {
 
       const { data, error: fetchError } = await supabase
         .from("playlists")
-        .select(
-          `
-        *,
-        playlist_songs (playlist_id) 
-      `,
-        ) // We use playlist_id because 'id' doesn't exist in your junction table
+        .select(`*, playlist_songs (playlist_id)`)
         .eq("user_id", session.user.id)
         .order("created_at", { ascending: false });
 
@@ -61,7 +53,9 @@ export default function Playlists() {
     } = await supabase.auth.getSession();
     const { data, error } = await supabase
       .from("playlists")
-      .insert([{ name, user_id: session.user.id, owner_email: session.user.email }])
+      .insert([
+        { name, user_id: session.user.id, owner_email: session.user.email },
+      ])
       .select()
       .single();
 
@@ -75,10 +69,7 @@ export default function Playlists() {
   };
 
   return (
-    <div
-      className="d-flex flex-column vh-100 vw-100 text-white"
-      style={{ background: "#050508" }}
-    >
+    <div className="d-flex flex-column vh-100 vw-100 text-white bg-black">
       <Header />
       <div className="d-flex flex-grow-1 overflow-hidden">
         <Sidebar />
@@ -104,63 +95,70 @@ export default function Playlists() {
               <Loader2 className="animate-spin text-warning" size={48} />
             </div>
           ) : (
-            <>
+            <div className="row g-4">
               {playlists.length === 0 ? (
-                <div className="text-center py-5">
+                <div className="text-center py-5 w-100">
                   <Music size={48} className="text-secondary mb-3 opacity-25" />
                   <p className="text-secondary">
                     No playlists found. Create your first one!
                   </p>
                 </div>
               ) : (
-                <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5 g-4">
-                  {playlists.map((pl) => (
-                    <div key={pl.id} className="col">
-                      <div
-                        className="playlist-card p-3 h-100 rounded-4 cursor-pointer position-relative overflow-hidden"
-                        onClick={() => {
-                          stopMusic();
-                          navigate(`/playlists/${pl.id}`);
-                        }}
-                        style={{
-                          background: "#121216",
-                          transition: "all 0.3s ease",
-                          border: "1px solid #2a2a2a",
-                        }}
-                      >
-                        <div className="aspect-ratio-square bg-dark rounded-3 mb-3 d-flex align-items-center justify-content-center position-relative">
-                          <Music
-                            size={60}
-                            className="text-secondary opacity-25"
+                playlists.map((pl) => (
+                  <div key={pl.id} className="col-6 col-md-4 col-lg-3 col-xl-2">
+                    {/* CUSTOM SPOTIFY CARD */}
+                    <div
+                      className="playlist-card-spotify"
+                      onClick={() => navigate(`/playlists/${pl.id}`)}
+                    >
+                      <div className="card-image-container aspect-ratio-square">
+                        {pl.image_url ? (
+                          <img
+                            src={pl.image_url}
+                            alt={pl.name}
+                            className="w-100 h-100 object-fit-cover"
                           />
-                          <div className="play-overlay position-absolute bottom-0 end-0 m-3 opacity-0 translate-y-2">
-                            <div className="btn btn-warning rounded-circle p-3 shadow-lg">
-                              <Play fill="black" size={24} />
-                            </div>
+                        ) : pl.name === "Favorites" ? (
+                          <div className="w-100 h-100 d-flex align-items-center justify-content-center bg-dark">
+                            <Heart
+                              size={60}
+                              className="text-danger"
+                              fill="currentColor"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-100 h-100 d-flex align-items-center justify-content-center bg-dark">
+                            <Music
+                              size={60}
+                              className="text-secondary opacity-25"
+                            />
+                          </div>
+                        )}
+
+                        {/* Floating Play Button */}
+                        <div className="play-button-floating">
+                          <div className="btn btn-warning rounded-circle p-3 shadow-lg">
+                            <Play fill="black" size={20} />
                           </div>
                         </div>
-                        <h5 className="fw-bold mb-1 text-truncate">
-                          {pl.name}
-                        </h5>
-                        <p className="small text-secondary mb-0">
+                      </div>
+
+                      <div className="playlist-info">
+                        <div className="playlist-title">{pl.name}</div>
+                        <div className="playlist-description">
                           {pl.playlist_songs?.length || 0} Tracks
-                        </p>
+                        </div>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))
               )}
-            </>
+            </div>
           )}
         </main>
       </div>
 
-      <style>{`
-        .playlist-card:hover { background: #1a1a22 !important; transform: translateY(-5px); border-color: #ffc107 !important; }
-        .playlist-card:hover .play-overlay { opacity: 1 !important; transform: translateY(0) !important; transition: all 0.3s ease; }
-        .aspect-ratio-square { aspect-ratio: 1/1; width: 100%; }
-      `}</style>
-      {/* Create Modal */}
+      {/* CREATE MODAL */}
       {showModal && (
         <div
           className="position-fixed top-0 start-0 w-100 vh-100 d-flex align-items-center justify-content-center"

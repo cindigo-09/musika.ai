@@ -22,7 +22,13 @@ export default function ResetPassword() {
         setSessionReady(true);
       }
     });
-    return () => listener.subscription.unsubscribe();
+
+    // ADD THIS CLEANUP RETURN:
+    return () => {
+      if (listener?.subscription) {
+        listener.subscription.unsubscribe();
+      }
+    };
   }, []);
 
   const handleReset = async (e) => {
@@ -62,7 +68,8 @@ export default function ResetPassword() {
           <div className="col-md-6 d-flex flex-column justify-content-center align-items-center text-center p-5">
             <h1 className="page-title display-4">MUSIKA AI</h1>
             <p className="text-white opacity-75 font-italic">
-              "A music player to bridge the gap between your soul and the different human melodies."
+              "A music player to bridge the gap between your soul and the
+              different human melodies."
             </p>
           </div>
 
@@ -71,11 +78,18 @@ export default function ResetPassword() {
             <div className="card musika-card p-5" style={{ width: "420px" }}>
               <h3
                 className="mb-2 text-center"
-                style={{ color: "var(--mana-gold)", letterSpacing: "3px", fontSize: "1.1rem" }}
+                style={{
+                  color: "var(--mana-gold)",
+                  letterSpacing: "3px",
+                  fontSize: "1.1rem",
+                }}
               >
                 RESET PASSWORD
               </h3>
-              <p className="text-center small mb-4" style={{ color: "var(--mana-silver)", opacity: 0.7 }}>
+              <p
+                className="text-center small mb-4"
+                style={{ color: "var(--mana-silver)", opacity: 0.7 }}
+              >
                 Enter your new password below.
               </p>
 
@@ -90,8 +104,12 @@ export default function ResetPassword() {
                     lineHeight: "1.6",
                   }}
                 >
-                  ✅ Your password has been reset successfully. You can now log in.
-                  <div className="mt-2 small" style={{ color: "var(--mana-silver)", opacity: 0.6 }}>
+                  ✅ Your password has been reset successfully. You can now log
+                  in.
+                  <div
+                    className="mt-2 small"
+                    style={{ color: "var(--mana-silver)", opacity: 0.6 }}
+                  >
                     Redirecting to login…
                   </div>
                 </div>
@@ -104,15 +122,29 @@ export default function ResetPassword() {
                       className="form-control musika-input"
                       placeholder="New Password"
                       value={newPassword}
-                      onChange={(e) => { setNewPassword(e.target.value); setError(""); }}
+                      onChange={(e) => {
+                        setNewPassword(e.target.value);
+                        setError("");
+                      }}
                       required
                     />
                     {newPassword.length > 0 && (
                       <span
-                        style={{ cursor: "pointer", position: "absolute", right: "15px", top: "12px", color: "var(--mana-gold)", opacity: 0.7 }}
+                        style={{
+                          cursor: "pointer",
+                          position: "absolute",
+                          right: "15px",
+                          top: "12px",
+                          color: "var(--mana-gold)",
+                          opacity: 0.7,
+                        }}
                         onClick={() => setShowNew(!showNew)}
                       >
-                        {showNew ? <EyeOff size={18} color="white" /> : <Eye size={18} color="white" />}
+                        {showNew ? (
+                          <EyeOff size={18} color="white" />
+                        ) : (
+                          <Eye size={18} color="white" />
+                        )}
                       </span>
                     )}
                   </div>
@@ -124,15 +156,29 @@ export default function ResetPassword() {
                       className="form-control musika-input"
                       placeholder="Confirm New Password"
                       value={confirmPassword}
-                      onChange={(e) => { setConfirmPassword(e.target.value); setError(""); }}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        setError("");
+                      }}
                       required
                     />
                     {confirmPassword.length > 0 && (
                       <span
-                        style={{ cursor: "pointer", position: "absolute", right: "15px", top: "12px", color: "var(--mana-gold)", opacity: 0.7 }}
+                        style={{
+                          cursor: "pointer",
+                          position: "absolute",
+                          right: "15px",
+                          top: "12px",
+                          color: "var(--mana-gold)",
+                          opacity: 0.7,
+                        }}
                         onClick={() => setShowConfirm(!showConfirm)}
                       >
-                        {showConfirm ? <EyeOff size={18} color="white" /> : <Eye size={18} color="white" />}
+                        {showConfirm ? (
+                          <EyeOff size={18} color="white" />
+                        ) : (
+                          <Eye size={18} color="white" />
+                        )}
                       </span>
                     )}
                   </div>
@@ -155,7 +201,10 @@ export default function ResetPassword() {
                     type="submit"
                     disabled={loading}
                     className="btn w-100 py-3"
-                    style={{ border: "1px solid var(--mana-gold)", color: "var(--mana-gold)" }}
+                    style={{
+                      border: "1px solid var(--mana-gold)",
+                      color: "var(--mana-gold)",
+                    }}
                   >
                     {loading ? "Updating..." : "Reset Password"}
                   </button>
