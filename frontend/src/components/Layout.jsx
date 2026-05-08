@@ -94,7 +94,7 @@ const Layout = () => {
               </button>
               <button
                 className="btn btn-link text-white-50 p-0"
-                onClick={playNext}
+                onClick={() => playNext(false)}
               >
                 <SkipForward size={22} />
               </button>

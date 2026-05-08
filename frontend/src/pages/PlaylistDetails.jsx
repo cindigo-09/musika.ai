@@ -209,6 +209,11 @@ export default function PlaylistDetails() {
 
   const handleClearAllFavorites = async () => {
     try {
+      const ok = window.confirm(
+        "Are you sure you want to clear ALL Favorites?",
+      );
+      if (!ok) return;
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -221,7 +226,10 @@ export default function PlaylistDetails() {
         .eq("name", "Favorites")
         .single();
 
-      if (!favPlaylist) return;
+      if (!favPlaylist) {
+        alert("Favorites playlist not found.");
+        return;
+      }
 
       // delete all rows in playlist_songs for Favorites
       const { error } = await supabase
@@ -235,13 +243,18 @@ export default function PlaylistDetails() {
       fetchFavorites();
       fetchPlaylistData();
       setShowClearFavoritesConfirm(false);
+      alert("All Favorites cleared.");
     } catch (err) {
       console.error(err);
+      alert("Failed to clear Favorites.");
     }
   };
 
   const handleDeletePlaylist = async () => {
     try {
+      const ok = window.confirm("Delete this playlist permanently?");
+      if (!ok) return;
+
       // Stop playing if deleting current playlist song
       if (currentSong && playlistSongs.some((s) => s.id === currentSong.id)) {
         stopMusic();
@@ -252,28 +265,43 @@ export default function PlaylistDetails() {
       if (error) throw error;
 
       setShowDeleteConfirm(false);
+      alert("Playlist deleted.");
       navigate("/playlists");
     } catch (err) {
       console.error(err);
+      alert("Failed to delete playlist.");
     }
   };
 
   const handleSavePlaylistEdits = async (e) => {
     e.preventDefault();
 
-    if (!playlistEditForm.name.trim()) return;
+    const name = playlistEditForm.name.trim();
+    if (!name) {
+      alert("Playlist name is required.");
+      return;
+    }
 
-    const { error } = await supabase
-      .from("playlists")
-      .update({
-        name: playlistEditForm.name.trim(),
-        description: playlistEditForm.description,
-      })
-      .eq("id", id);
+    const ok = window.confirm("Save playlist changes?");
+    if (!ok) return;
 
-    if (!error) {
+    try {
+      const { error } = await supabase
+        .from("playlists")
+        .update({
+          name,
+          description: playlistEditForm.description,
+        })
+        .eq("id", id);
+
+      if (error) throw error;
+
       setIsEditingPlaylist(false);
       fetchPlaylistData();
+      alert("Playlist updated.");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update playlist.");
     }
   };
 
