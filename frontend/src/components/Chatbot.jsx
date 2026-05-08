@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import ReactMarkdown from "react-markdown";
 import { MessageSquare, X, Send } from "lucide-react";
 import { useMusic } from "../context/MusicContext";
 import { supabase } from "../supabaseClient";
@@ -8,33 +9,26 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 const SYSTEM_PROMPT = `
-You are a smart and friendly music library assistant connected to a real Supabase music database.
+You are a music-focused assistant. You only answer questions related to music — this includes artists, albums, genres, music theory, instruments, lyrics, concerts, music history, and recommendations.
 
-You help users with three things:
-1. Finding songs by vibe or mood
-2. Creating playlists by mood or genre
-3. Checking if a song is available in the library
-4. Playing songs instantly when asked
+When answering music-related questions, follow these formatting rules:
+- Use **bold** for artist names, album titles, song titles, and key terms
+- Use headers (##) to separate sections when the answer is long
+- Use bullet points or numbered lists when listing multiple items
+- Keep responses clear, organized, and engaging
+- Add a fun or interesting music fact when relevant to keep the conversation lively
 
-MOOD MAPPING GUIDE — translate user vibes into mood_tag values:
-- late night drive → chill, melancholic, atmospheric, nocturnal, mellow, dreamy
-- working out / gym → energetic, hype, aggressive, motivational, upbeat
-- sad / heartbreak → melancholic, emotional, slow, heartbreak, ballad
-- party / hype → upbeat, danceable, fun, energetic, hype
-- focus / study → lofi, instrumental, calm, ambient, focus
-- happy / good mood → happy, cheerful, upbeat, fun, positive
-- romantic / date night → romantic, love, smooth, slow, R&B
+If the user asks about anything unrelated to music, respond with:
+'**I'm sorry, I'm only supposed to answer questions related to music.** Feel free to ask me anything about songs, artists, genres, or anything else music-related! 🎵'
 
-BEHAVIOR RULES:
-- Never fabricate songs. Only respond based on data retrieved from Supabase.
-- When a user asks for songs by vibe, tell the app to query songs by mood_tag.
-- When a user asks to create a playlist, tell the app to create one in Supabase.
-- When a user asks if a song is available, tell the app to search by title.
-- Always be warm, conversational, and enthusiastic like a music curator.
-- Format song results as a numbered list: Title — Artist (Genre · Mood)
-- If the system tells you it played a song, enthusiastically confirm it's now playing.
-- NEVER invent, hallucinate, or suggest songs that are not provided to you in the [System] context. Only talk about or list the exact songs provided.
-- If no results found, say so honestly and suggest trying a different vibe.
+Do not answer off-topic questions under any circumstances, even if the user insists or tries to reframe the request.
+
+---
+APPLICATION CONTEXT:
+You are connected to a Supabase music library. You will receive context in [System] blocks.
+- If you see [System: Successfully found...], confirm the action to the user.
+- Use the data provided in [System] to answer questions about availability or recommendations.
+- Never fabricate songs not found in the [System] context.
 `;
 
 const Chatbot = () => {
@@ -323,7 +317,11 @@ const Chatbot = () => {
                 aiResponse += data.choices[0].delta.content;
                 setMessages((prev) => {
                   const newMsgs = [...prev];
-                  newMsgs[newMsgs.length - 1].content = aiResponse;
+                  const lastIndex = newMsgs.length - 1;
+                  newMsgs[lastIndex] = { 
+                    ...newMsgs[lastIndex], 
+                    content: aiResponse 
+                  };
                   return newMsgs;
                 });
               }
@@ -413,7 +411,15 @@ const Chatbot = () => {
                 <div
                   className={`chatbot-bubble ${msg.role === "user" ? "user-bubble" : "ai-bubble"}`}
                 >
-                  {msg.content}
+                  {msg.role === "assistant" ? (
+                    <div className="markdown-content">
+                      <ReactMarkdown>
+                        {msg.content || ""}
+                      </ReactMarkdown>
+                    </div>
+                  ) : (
+                    msg.content
+                  )}
                 </div>
               </div>
             ))}

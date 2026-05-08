@@ -30,7 +30,9 @@ const Layout = () => {
   const location = useLocation();
 
   const isAuthPage =
-    location.pathname === "/login" || location.pathname === "/register";
+    location.pathname === "/login" ||
+    location.pathname === "/register" ||
+    location.pathname === "/reset-password";
   const isAdminPage = location.pathname.startsWith("/admin");
 
   const handleSeek = (e) => {
@@ -146,7 +148,7 @@ const Layout = () => {
         </footer>
       )}
 
-      {!isAdminPage && <Chatbot />}
+      {!isAdminPage && !isAuthPage && <Chatbot />}
     </div>
   );
 };
