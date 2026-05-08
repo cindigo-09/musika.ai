@@ -357,17 +357,22 @@ export default function Home() {
 
   const handleUpdateSong = async (e) => {
     e.preventDefault();
-    if (!editingSong) return;
-    const { error } = await supabase
-      .from("songs")
-      .update({ title: editingSong.title, artist: editingSong.artist })
-      .eq("id", editingSong.id);
 
-    if (!error) {
-      updateSongInList(editingSong);
-      triggerSuccess("Track updated!");
+    const { data, error } = await supabase
+      .from("songs")
+      .update({
+        title: editingSong.title,
+        artist: editingSong.artist,
+        genre: editingSong.genre, // New field
+        moods: editingSong.moods, // New field
+      })
+      .eq("id", editingSong.id)
+      .select()
+      .single();
+
+    if (!error && data) {
+      updateSongInList(data);
       setShowEditModal(false);
-      setEditingSong(null);
     }
   };
 
@@ -462,7 +467,7 @@ export default function Home() {
   const myGrouped = getGroupedSongs(mySongsList);
   const communityGrouped = getGroupedSongs(communitySongsList);
 
-  const renderSongTable = (songList) => (
+  const renderSongTable = (songList, queueList) => (
     <table className="table table-dark table-hover mb-5">
       <thead>
         <tr className="text-secondary small">
@@ -477,7 +482,7 @@ export default function Home() {
           <tr
             key={s.id}
             className="align-middle"
-            onClick={() => handlePlayLibrarySong(s)}
+            onClick={() => handlePlayLibrarySong(s, queueList)}
             style={{ cursor: "pointer" }}
           >
             <td className="text-secondary">{idx + 1}</td>
@@ -562,7 +567,7 @@ export default function Home() {
             >
               {genre}
             </h4>
-            {renderSongTable(groups[genre])}
+            {renderSongTable(groups[genre], groups[genre])}
           </div>
         ))}
 
@@ -574,7 +579,7 @@ export default function Home() {
           >
             Uncategorized
           </h4>
-          {renderSongTable(uncategorized)}
+          {renderSongTable(uncategorized, uncategorized)}
         </div>
       )}
     </>
@@ -759,22 +764,57 @@ export default function Home() {
           >
             <h5 className="text-info mb-4 fw-bold">EDIT TRACK</h5>
             <form onSubmit={handleUpdateSong}>
-              <input
-                className="form-control musika-input mb-3"
-                value={editingSong.title}
-                onChange={(e) =>
-                  setEditingSong({ ...editingSong, title: e.target.value })
-                }
-              />
-              <input
-                className="form-control musika-input mb-4"
-                value={editingSong.artist}
-                onChange={(e) =>
-                  setEditingSong({ ...editingSong, artist: e.target.value })
-                }
-              />
+              {/* Title & Artist inputs remain the same */}
+
+              {/* Genre Selection */}
+              <div className="mb-3">
+                <label className="text-secondary small mb-2">GENRE</label>
+                <select
+                  className="form-control musika-input"
+                  value={editingSong.genre}
+                  onChange={(e) =>
+                    setEditingSong({ ...editingSong, genre: e.target.value })
+                  }
+                >
+                  {GENRES.map((g) => (
+                    <option key={g} value={g}>
+                      {g.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Mood Selection */}
+              <div className="mb-4">
+                <label className="text-secondary small mb-2">MOODS</label>
+                <div className="d-flex flex-wrap gap-2">
+                  {MOODS.map((m) => (
+                    <span
+                      key={m}
+                      className={`badge rounded-pill ${
+                        editingSong.moods?.includes(m)
+                          ? "bg-info text-dark"
+                          : "bg-dark text-secondary border border-secondary"
+                      }`}
+                      style={{ cursor: "pointer" }}
+                      onClick={() => {
+                        const currentMoods = editingSong.moods || [];
+                        const newMoods = currentMoods.includes(m)
+                          ? currentMoods.filter((item) => item !== m)
+                          : [...currentMoods, m];
+                        setEditingSong({ ...editingSong, moods: newMoods });
+                      }}
+                    >
+                      {m}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
               <div className="d-flex gap-2">
-                <button className="btn btn-info w-100 fw-bold">SAVE</button>
+                <button className="btn btn-info w-100 fw-bold">
+                  SAVE CHANGES
+                </button>
                 <button
                   type="button"
                   className="btn btn-outline-secondary w-100"

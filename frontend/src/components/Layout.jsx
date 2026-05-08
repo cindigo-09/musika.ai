@@ -88,7 +88,7 @@ const Layout = () => {
               </button>
               <button
                 className="btn btn-light rounded-circle p-2"
-                onClick={() => playSong(currentSong, songs)}
+                onClick={() => playSong(currentSong)}
               >
                 {isPlaying ? <Pause size={28} /> : <Play size={28} />}
               </button>
