@@ -24,7 +24,7 @@ function Profile() {
         .select(`id, played_at, genre_context, songs ( title, artist )`)
         .eq("user_id", user.id)
         .order("played_at", { ascending: false })
-        .limit(10);
+        .limit(5);
 
       if (!error) setHistory(data || []);
     };

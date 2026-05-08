@@ -7,6 +7,7 @@ import React, {
   useCallback,
 } from "react";
 import { useLocation } from "react-router-dom";
+import { supabase } from "../supabaseClient";
 
 const MusicContext = createContext();
 
@@ -83,6 +84,19 @@ export const MusicProvider = ({ children }) => {
         await audioRef.current.play();
         setCurrentSong(song);
         setIsPlaying(true);
+
+        // Record to listening_history in Supabase
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          supabase.from("listening_history").insert({
+            user_id: user.id,
+            song_id: song.id,
+            played_at: new Date().toISOString(),
+            genre_context: song.genre || song.mood_tag || null,
+          }).then(({ error }) => {
+            if (error) console.error("History insert error:", error.message);
+          });
+        }
       }
     } catch (err) {
       console.error("Playback failed:", err);
