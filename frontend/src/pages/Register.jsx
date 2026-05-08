@@ -64,7 +64,7 @@ export default function Register() {
       // Create the profile in the database via the local backend (bypassing RLS)
       if (data?.user) {
         try {
-          await fetch(`http://localhost:8080/api/user/${data.user.id}/profile`, {
+          await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user/${data.user.id}/profile`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
