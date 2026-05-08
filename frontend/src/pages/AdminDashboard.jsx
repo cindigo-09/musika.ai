@@ -30,8 +30,7 @@ import { Bar, Doughnut } from "react-chartjs-2";
 
 // Export Tools
 import Papa from "papaparse";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
+import { jsPDF } from "jspdf";
 
 ChartJS.register(
   CategoryScale,
@@ -110,11 +109,23 @@ export default function AdminDashboard() {
       if (!songsErr) setSongs(songsData || []);
 
       // Fetch Activity Log
-      const { data: logData } = await supabase
+      const { data: logData, error: logErr } = await supabase
         .from("activity_log")
         .select("*")
         .order("performed_at", { ascending: false });
-      setActivityLogs(logData || []);
+
+      if (logErr) {
+        console.warn("Activity Log Fetch Error:", {
+          message: logErr.message,
+          code: logErr.code,
+          details: logErr.details,
+          hint: "Trying anonymous access as fallback...",
+        });
+        setActivityLogs([]);
+      } else {
+        console.log(`Activity logs loaded: ${(logData || []).length} records`);
+        setActivityLogs(logData || []);
+      }
 
       // Fetch Listening History
       const { data: historyData } = await supabase
@@ -499,27 +510,83 @@ export default function AdminDashboard() {
   };
 
   const exportActivityPDF = () => {
-    const doc = new jsPDF();
-    doc.text("Musika AI - Activity Log", 14, 15);
-    doc.setFontSize(10);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 22);
+    if (!activityLogs || activityLogs.length === 0) {
+      alert("No activity logs available to export.");
+      return;
+    }
 
-    const tableColumn = ["Action", "Song Title", "Date & Time"];
-    const tableRows = activityLogs.map((log) => [
-      String(log.action || "").toUpperCase(),
-      log.song_title || "Unknown",
-      log.performed_at ? new Date(log.performed_at).toLocaleString() : "",
-    ]);
+    try {
+      const doc = new jsPDF();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 14;
+      let yPosition = 15;
 
-    doc.autoTable({
-      head: [tableColumn],
-      body: tableRows,
-      startY: 30,
-      theme: "grid",
-      headStyles: { fillColor: [124, 58, 237] },
-    });
+      // Title
+      doc.setFontSize(16);
+      doc.text("Musika AI - Activity Log", margin, yPosition);
+      yPosition += 10;
 
-    doc.save("musika_activity_log.pdf");
+      // Generated date
+      doc.setFontSize(10);
+      doc.text(
+        `Generated on: ${new Date().toLocaleString()}`,
+        margin,
+        yPosition,
+      );
+      yPosition += 10;
+
+      // Table headers
+      doc.setFontSize(11);
+      doc.setFont(undefined, "bold");
+      const colWidths = [30, 80, 60];
+      const headers = ["Action", "Song Title", "Date & Time"];
+      let xPos = margin;
+      headers.forEach((header, i) => {
+        doc.text(header, xPos, yPosition);
+        xPos += colWidths[i];
+      });
+      yPosition += 8;
+
+      // Draw line under headers
+      doc.setDrawColor(124, 58, 237);
+      doc.line(margin, yPosition, pageWidth - margin, yPosition);
+      yPosition += 5;
+
+      // Table rows
+      doc.setFont(undefined, "normal");
+      doc.setFontSize(9);
+      activityLogs.forEach((log) => {
+        if (yPosition > pageHeight - 15) {
+          doc.addPage();
+          yPosition = 15;
+        }
+
+        const action = String(log.action || "").toUpperCase();
+        const songTitle = log.song_title || "Unknown";
+        const dateTime = log.performed_at
+          ? new Date(log.performed_at).toLocaleString()
+          : "N/A";
+
+        xPos = margin;
+        doc.text(action.substring(0, 15), xPos, yPosition);
+        doc.text(songTitle.substring(0, 50), xPos + colWidths[0], yPosition);
+        doc.text(
+          dateTime.substring(0, 25),
+          xPos + colWidths[0] + colWidths[1],
+          yPosition,
+        );
+        yPosition += 6;
+      });
+
+      doc.save("musika_activity_log.pdf");
+      console.log(
+        `PDF exported successfully with ${activityLogs.length} records`,
+      );
+    } catch (err) {
+      console.error("PDF export error:", err);
+      alert("Failed to export PDF. Check console for details.");
+    }
   };
 
   if (loading) {
@@ -879,22 +946,6 @@ export default function AdminDashboard() {
                 <h5 className="mb-4 text-white">Uploads Per Month</h5>
                 <div style={{ height: 300 }}>
                   <Bar data={processMonthlyUploads()} options={chartOptions} />
-                </div>
-              </div>
-            </div>
-            <div className="col-lg-4">
-              <div
-                className="p-4 rounded shadow-sm h-100 d-flex flex-column align-items-center"
-                style={{ background: "#1a1a24" }}
-              >
-                <h5 className="mb-4 text-white w-100 text-start">
-                  Artist Distribution
-                </h5>
-                <div style={{ width: 250, height: 250 }}>
-                  <Doughnut
-                    data={processArtistDistribution()}
-                    options={pieOptions}
-                  />
                 </div>
               </div>
             </div>
