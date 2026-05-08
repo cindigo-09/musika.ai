@@ -53,7 +53,7 @@ const Layout = () => {
       {currentSong && (
         <footer
           className="fixed-bottom bg-dark border-top border-secondary p-3 text-white d-flex align-items-center justify-content-between"
-          style={{ zIndex: 1050 }}
+          style={{ zIndex: 1040 }}
         >
           {/* 1. SONG INFO */}
           <div

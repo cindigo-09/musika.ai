@@ -27,8 +27,10 @@ Do not answer off-topic questions under any circumstances, even if the user insi
 APPLICATION CONTEXT:
 You are connected to a Supabase music library. You will receive context in [System] blocks.
 - If you see [System: Successfully found...], confirm the action to the user.
-- Use the data provided in [System] to answer questions about availability or recommendations.
-- Never fabricate songs not found in the [System] context.
+- Use ONLY the songs listed in the [System] context when responding about playlists or song lists.
+- NEVER fabricate, invent, or suggest songs that are not explicitly listed in the [System] context.
+- If a playlist was created, list ONLY the exact songs provided in the [System] block — no additions, no substitutions.
+- If no songs were found, say so honestly and do not make up alternatives.
 `;
 
 const Chatbot = () => {
@@ -94,18 +96,49 @@ const Chatbot = () => {
     const msgLower = userMsg.toLowerCase();
     let context = null;
 
-    // 0. Play Song
+    // 0. PLAY — handles both title ("play Blinding Lights") and mood ("play something chill", "play sad songs")
     if (msgLower.startsWith("play ") || msgLower.includes("play me ")) {
-      let titleGuess = msgLower.replace(/play |play me /gi, "").trim();
-      const songs = await supabaseQuery(
-        `/rest/v1/songs?title=ilike.*${encodeURIComponent(titleGuess)}*&select=id,title,artist,genre,mood_tag,song_url&limit=1`,
+      // Strip filler words to get the core search term
+      const query = msgLower
+        .replace(/^play me\s+/i, "")
+        .replace(/^play\s+/i, "")
+        .replace(/\b(something|some|a|an|the)\b/gi, "")
+        .trim();
+
+      // Step 1: Try to find a song by exact/partial title
+      const titleResults = await supabaseQuery(
+        `/rest/v1/songs?title=ilike.*${encodeURIComponent(query)}*&select=id,title,artist,genre,mood_tag,song_url&limit=1`,
       );
-      if (songs && songs.length > 0) {
-        const songToPlay = songs[0];
+
+      if (titleResults && titleResults.length > 0) {
+        // Found by title — play it
+        const songToPlay = titleResults[0];
         playSong(songToPlay);
-        context = `[System: Successfully found and automatically started playing the song "${songToPlay.title}" by ${songToPlay.artist}. Tell the user you are playing it now.]`;
+        context = `[System: Found and started playing "${songToPlay.title}" by ${songToPlay.artist}. Tell the user you are playing it now.]`;
       } else {
-        context = `[System: Tried to play "${titleGuess}" but it was not found in the database. Tell the user it's unavailable.]`;
+        // Step 2: No title match — try mood_tag and genre
+        const moodResults = await supabaseQuery(
+          `/rest/v1/songs?or=(mood_tag.ilike.*${encodeURIComponent(query)}*,genre.ilike.*${encodeURIComponent(query)}*)&select=id,title,artist,genre,mood_tag,song_url&limit=20`,
+        );
+
+        if (moodResults && moodResults.length > 0) {
+          // Pick a random song for variety
+          const pick = moodResults[Math.floor(Math.random() * moodResults.length)];
+          playSong(pick);
+          context = `[System: No song titled "${query}" was found. Instead, searched by mood/genre and found ${moodResults.length} matching songs. Now playing "${pick.title}" by ${pick.artist} (mood: ${pick.mood_tag || pick.genre}). Tell the user what you are playing and mention it matches the "${query}" vibe.]`;
+        } else {
+          // Step 3: Nothing found at all — fetch available moods/genres to guide the user
+          const allSongs = await supabaseQuery(
+            `/rest/v1/songs?select=mood_tag,genre&limit=100`,
+          );
+          const availableMoods = [...new Set(
+            (allSongs || [])
+              .flatMap(s => [s.mood_tag, s.genre])
+              .filter(Boolean)
+              .map(t => t.toLowerCase())
+          )].sort();
+          context = `[System: No song found by title or mood/genre matching "${query}". The library has these available moods and genres: ${availableMoods.join(", ")}. Tell the user their requested mood was not found, then LIST these available moods/genres and suggest they try one of them.]`;
+        }
       }
     }
     // 1. List all/available songs
@@ -141,27 +174,32 @@ const Chatbot = () => {
     }
     // 2. Playlist Creation
     else if (/create.*playlist|make.*playlist/i.test(msgLower)) {
-      // Look for mood or name
       let playlistName = "My AI Playlist";
-      let endpoint = "/rest/v1/songs?limit=10"; // default random
-
-      const moodMatch =
-        msgLower.match(/for (.*?)$/i) ||
-        msgLower.match(/called (.*?)$/i) ||
-        msgLower.match(/of (.*?)$/i);
+      let endpoint = `/rest/v1/songs?select=id,title,artist,genre,mood_tag&limit=10`; // default random
 
       if (msgLower.includes("random")) {
         playlistName = "Random AI Playlist";
-        // Random ordering can be simulated or we just take the first 10
-      } else if (moodMatch) {
-        let mood = moodMatch[1]
-          .trim()
-          .replace(/playlist/gi, "")
-          .trim();
-        if (mood) {
-          playlistName =
-            mood.charAt(0).toUpperCase() + mood.slice(1) + " Playlist";
-          endpoint = `/rest/v1/songs?mood_tag=ilike.*${encodeURIComponent(mood)}*&limit=10`;
+      } else {
+        // Try to extract a genre/mood keyword from the message
+        // Patterns: "create a pop playlist", "make me a jazz playlist", "playlist of hip hop", "playlist for working out"
+        const genreMatch =
+          msgLower.match(/(?:create|make)(?:\s+me)?(?:\s+a(?:\s+\w+)?)??\s+(\w[\w\s-]*)\s+playlist/i) ||
+          msgLower.match(/playlist\s+(?:of|for)\s+([\w\s-]+?)(?:\s*$)/i) ||
+          msgLower.match(/for\s+([\w\s-]+?)(?:\s*$)/i);
+
+        if (genreMatch) {
+          let tag = genreMatch[1]
+            .trim()
+            .replace(/\bplaylist\b/gi, "")
+            .replace(/\bme\b/gi, "")
+            .replace(/\ba\b/gi, "")
+            .trim();
+
+          if (tag) {
+            playlistName = tag.charAt(0).toUpperCase() + tag.slice(1) + " Playlist";
+            // Search by BOTH genre AND mood_tag so genre-specific requests (e.g. "pop") return genre-matched songs
+            endpoint = `/rest/v1/songs?or=(genre.ilike.*${encodeURIComponent(tag)}*,mood_tag.ilike.*${encodeURIComponent(tag)}*)&select=id,title,artist,genre,mood_tag&limit=10`;
+          }
         }
       }
 
@@ -169,11 +207,6 @@ const Chatbot = () => {
       const songs = await supabaseQuery(endpoint);
 
       if (songs && songs.length > 0) {
-        // Create Playlist
-        // NOTE: hardcoding a UUID for user_id to bypass auth requirements for this example,
-        // or just letting Supabase fail if user_id is required. Assuming user_id can be null or we pass a generic one.
-        // We'll just create it without user_id if the schema allows, or use a dummy UUID.
-        // If your schema requires user_id, make sure to pass the actual logged in user's ID.
         const playlistData = await supabaseQuery("/rest/v1/playlists", "POST", {
           name: playlistName,
           description: `AI generated playlist based on: ${userMsg}`,
@@ -181,7 +214,6 @@ const Chatbot = () => {
 
         if (playlistData && playlistData[0]) {
           const playlistId = playlistData[0].id;
-          // Add songs
           const playlistSongsPayload = songs.map((s, idx) => ({
             playlist_id: playlistId,
             song_id: s.id,
@@ -194,12 +226,14 @@ const Chatbot = () => {
           );
           window.dispatchEvent(new CustomEvent("playlistCreated"));
           const songListNames = songs
-            .map((s) => `${s.title} by ${s.artist}`)
+            .map((s) => `**${s.title}** by ${s.artist} (${s.genre || s.mood_tag})`)
             .join(", ");
-          context = `[System: Successfully created playlist '${playlistName}' and added ${songs.length} songs. Here are the EXACT songs added: ${songListNames}. YOU MUST ONLY LIST THESE EXACT SONGS IN YOUR RESPONSE AND NO OTHERS.]`;
+          context = `[System: Successfully created playlist '${playlistName}' with ${songs.length} songs. These are the ONLY songs in the playlist — list them exactly as provided and do not add any others: ${songListNames}.]`;
         } else {
-          context = `[System: Failed to create playlist. Provide a general recommendation instead.]`;
+          context = `[System: Failed to create playlist in the database. Inform the user.]`;
         }
+      } else {
+        context = `[System: No songs matching the requested genre/mood were found in the library for playlist '${playlistName}'. Inform the user that no matching songs are available.]`;
       }
     }
     // 3. Vibe / Genre / Mood Search (Fallback)
@@ -259,9 +293,16 @@ const Chatbot = () => {
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setIsLoading(true);
 
+    let dbContext = null;
+
     try {
-      // 1. Fetch relevant DB context
-      const dbContext = await detectIntentAndFetchContext(userMessage);
+      // 1. Fetch relevant DB context (isolated — DB errors won't kill the whole request)
+      try {
+        dbContext = await detectIntentAndFetchContext(userMessage);
+      } catch (dbErr) {
+        console.error("DB context error:", dbErr);
+        dbContext = "[System: Failed to query the music database. Answer based on general music knowledge only.]";
+      }
 
       // 2. Prepare conversation
       let apiMessages = [
@@ -280,20 +321,28 @@ const Chatbot = () => {
           method: "POST",
           headers: {
             Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-            "HTTP-Referer": window.location.href, // Optional
-            "X-Title": "Musika AI Chatbot", // Optional
+            "HTTP-Referer": window.location.href,
+            "X-Title": "Musika AI Chatbot",
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "anthropic/claude-3.7-sonnet", // Updated to the latest sonnet model available on OpenRouter
+            model: "anthropic/claude-3.7-sonnet",
             messages: apiMessages,
-            max_tokens: 500, // Added to prevent credit limit errors (402) on OpenRouter
+            max_tokens: 500,
             stream: true,
           }),
         },
       );
 
-      if (!response.ok) throw new Error("API Error");
+      if (!response.ok) {
+        // Read actual error body from OpenRouter for better diagnostics
+        let errDetail = `Status ${response.status}`;
+        try {
+          const errBody = await response.json();
+          errDetail = errBody?.error?.message || errBody?.message || errDetail;
+        } catch {}
+        throw new Error(`OpenRouter: ${errDetail}`);
+      }
 
       // 4. Handle Streaming
       const reader = response.body.getReader();
@@ -332,14 +381,21 @@ const Chatbot = () => {
         }
       }
     } catch (error) {
-      console.error(error);
+      console.error("Chatbot error:", error);
+      const errMsg = error?.message || "";
+      let userFriendly = "Sorry, something went wrong. Please try again.";
+      if (errMsg.includes("402") || errMsg.toLowerCase().includes("credits") || errMsg.toLowerCase().includes("payment")) {
+        userFriendly = "⚠️ OpenRouter API credits have run out. Please top up your OpenRouter account to continue using the AI.";
+      } else if (errMsg.includes("401") || errMsg.toLowerCase().includes("auth") || errMsg.toLowerCase().includes("key")) {
+        userFriendly = "⚠️ Invalid OpenRouter API key. Please check your `VITE_OPENROUTER_API_KEY` in `.env`.";
+      } else if (errMsg.includes("429") || errMsg.toLowerCase().includes("rate limit")) {
+        userFriendly = "⚠️ Rate limit hit. Please wait a moment and try again.";
+      } else if (errMsg.includes("OpenRouter")) {
+        userFriendly = `⚠️ AI error: ${errMsg.replace("OpenRouter: ", "")}`;
+      }
       setMessages((prev) => [
         ...prev,
-        {
-          role: "assistant",
-          content:
-            "Sorry, I ran into an error connecting to the music database or AI provider.",
-        },
+        { role: "assistant", content: userFriendly },
       ]);
     } finally {
       setIsLoading(false);
