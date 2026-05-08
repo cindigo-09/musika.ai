@@ -11,7 +11,12 @@ import { useLocation } from "react-router-dom";
 const MusicContext = createContext();
 
 export const MusicProvider = ({ children }) => {
-  const [songs, setSongs] = useState([]);
+  // Library songs for UI rendering (Home, etc.)
+  const [librarySongs, setLibrarySongs] = useState([]);
+
+  // Active queue for playback controls (Next/Prev should advance within this)
+  const [queueSongs, setQueueSongs] = useState([]);
+
   const [currentSong, setCurrentSong] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -21,15 +26,26 @@ export const MusicProvider = ({ children }) => {
   const audioRef = useRef(new Audio());
   const location = useLocation();
 
+  /**
+   * Play a song.
+   * @param {object} song
+   * @param {Array|null} songList - if provided, becomes the active queue (used by Next/Prev)
+   * @param {boolean} forcePlay
+   */
   const playSong = async (song, songList = null, forcePlay = false) => {
     if (!song || !song.song_url) return;
 
+    // Only update the active playback queue when a specific list is provided.
+    // Do NOT overwrite librarySongs.
     if (songList && Array.isArray(songList)) {
-      setSongs(songList);
+      setQueueSongs(songList);
+    } else if (!queueSongs.length) {
+      // If no queue exists yet (e.g., first play from an entry without passing a list),
+      // default queue to library.
+      setQueueSongs(librarySongs);
     }
 
     try {
-      // If forcePlay is true, we skip the toggle check to ensure the song actually plays
       if (currentSong?.id === song.id && !forcePlay) {
         if (isPlaying) {
           audioRef.current.pause();
@@ -39,7 +55,6 @@ export const MusicProvider = ({ children }) => {
           setIsPlaying(true);
         }
       } else {
-        // Load and play fresh
         audioRef.current.src = song.song_url;
         audioRef.current.load();
         await audioRef.current.play();
@@ -53,9 +68,9 @@ export const MusicProvider = ({ children }) => {
 
   const playNext = useCallback(
     (isAutomatic = false) => {
-      if (songs.length === 0 || !currentSong) return;
+      if (queueSongs.length === 0 || !currentSong) return;
 
-      const currentIndex = songs.findIndex((s) => s.id === currentSong.id);
+      const currentIndex = queueSongs.findIndex((s) => s.id === currentSong.id);
       const nextIndex = currentIndex + 1;
 
       // Handle "Repeat One" for automatic transitions
@@ -65,24 +80,21 @@ export const MusicProvider = ({ children }) => {
         return;
       }
 
-      if (nextIndex >= songs.length) {
-        // If clicking 'Next' OR Repeat All is ON, go back to song[0]
+      if (nextIndex >= queueSongs.length) {
         if (!isAutomatic || repeatMode === "all") {
-          // PASSING TRUE HERE IS CRITICAL to avoid the pause bug
-          playSong(songs[0], null, true);
+          playSong(queueSongs[0], null, true);
         } else {
           stopMusic();
         }
       } else {
-        // Normal progression - also uses forcePlay to ensure reliability
-        playSong(songs[nextIndex], null, true);
+        playSong(queueSongs[nextIndex], null, true);
       }
     },
-    [songs, currentSong, repeatMode],
+    [queueSongs, currentSong, repeatMode],
   );
 
   const playPrev = () => {
-    if (songs.length === 0 || !currentSong) return;
+    if (queueSongs.length === 0 || !currentSong) return;
 
     // Restart song if more than 3 seconds have passed
     if (audioRef.current.currentTime > 3) {
@@ -90,12 +102,12 @@ export const MusicProvider = ({ children }) => {
       return;
     }
 
-    const currentIndex = songs.findIndex((s) => s.id === currentSong.id);
+    const currentIndex = queueSongs.findIndex((s) => s.id === currentSong.id);
     let prevIndex = currentIndex - 1;
     if (prevIndex < 0) {
-      prevIndex = songs.length - 1;
+      prevIndex = queueSongs.length - 1;
     }
-    playSong(songs[prevIndex], null, true);
+    playSong(queueSongs[prevIndex], null, true);
   };
 
   const toggleRepeat = () => {
@@ -117,14 +129,28 @@ export const MusicProvider = ({ children }) => {
     setCurrentTime(0);
     setDuration(0);
     setCurrentSong(null);
+    setQueueSongs([]);
   };
 
   const updateSongInList = (updatedSong) => {
-    setSongs((prev) =>
+    // Update library
+    setLibrarySongs((prev) =>
       prev.map((s) => (s.id === updatedSong.id ? { ...s, ...updatedSong } : s)),
     );
+
+    // Update active queue
+    setQueueSongs((prev) =>
+      prev.map((s) => (s.id === updatedSong.id ? { ...s, ...updatedSong } : s)),
+    );
+
+    // Sync the current player state if the playing song was edited
     if (currentSong?.id === updatedSong.id) {
-      setCurrentSong((prev) => ({ ...prev, ...updatedSong }));
+      setCurrentSong((prev) => ({
+        ...prev,
+        ...updatedSong,
+        genre: updatedSong.genre,
+        moods: updatedSong.moods,
+      }));
     }
   };
 
@@ -158,8 +184,11 @@ export const MusicProvider = ({ children }) => {
   return (
     <MusicContext.Provider
       value={{
-        songs,
-        setSongs,
+        // Keep existing external API names mostly stable for minimal changes:
+        // - Home uses `songs` for rendering; map it to librarySongs
+        songs: librarySongs,
+        setSongs: setLibrarySongs,
+        queueSongs,
         currentSong,
         isPlaying,
         currentTime,
