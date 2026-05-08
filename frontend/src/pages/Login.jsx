@@ -9,7 +9,7 @@ export default function Login() {
   const [forgotEmail, setForgotEmail] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [clickCount, setClickCount] = useState(false);
+  const [clickCount, setClickCount] = useState(0);
   const [forgotError, setForgotError] = useState("");
   const [forgotSuccess, setForgotSuccess] = useState(false);
   const navigate = useNavigate();
@@ -17,14 +17,18 @@ export default function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: form.email,
         password: form.password,
       });
+
       if (error) throw error;
+
       localStorage.setItem("username", data.user.email);
       localStorage.setItem("userId", data.user.id);
+
       navigate("/home");
     } catch (error) {
       alert(error.message || "An error occurred during login");
