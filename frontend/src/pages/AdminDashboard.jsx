@@ -721,26 +721,6 @@ export default function AdminDashboard() {
                 </button>
               </div>
             </div>
-
-            <div className="col-md-3">
-              <div
-                className="p-4 rounded shadow-sm"
-                style={{
-                  background: "#1a1a24",
-                  borderLeft: "4px solid #EC4899",
-                }}
-              >
-                <h6 className="text-secondary text-uppercase fw-bold mb-3">
-                  Export Monthly Growth (PDF)
-                </h6>
-                <button
-                  className="btn btn-outline-danger w-100 d-flex align-items-center justify-content-center gap-2"
-                  onClick={exportMonthlyGrowthPDF}
-                >
-                  <Download size={16} /> Export PDF
-                </button>
-              </div>
-            </div>
           </div>
 
           {/* NEW: Charts for user analytics */}
