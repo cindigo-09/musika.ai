@@ -6,7 +6,6 @@ import fs from "fs";
 import path from "path";
 import multer from "multer";
 import crypto from "crypto";
-import axios from "axios";
 
 dotenv.config();
 
@@ -171,7 +170,8 @@ app.delete("/api/songs/:songId", (req, res) => {
   }
 });
 
-app.listen(8080, () => console.log("Server running on port 8080"));
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 // Update song details
 app.put("/api/songs/:songId", (req, res) => {
@@ -192,24 +192,3 @@ app.put("/api/songs/:songId", (req, res) => {
   }
 });
 
-// Route to get music based on genre
-app.get("/api/recommendations", async (req, res) => {
-  const { genre } = req.query; // Get genre from frontend request
-
-  try {
-    const response = await axios.get("https://api.jamendo.com/v3.0/tracks/", {
-      params: {
-        client_id: process.env.JAMENDO_CLIENT_ID,
-        format: "json",
-        limit: 10,
-        fuzzytags: genre, // Searches by genre/tags
-        boost: "popularity_month",
-      },
-    });
-
-    res.json(response.data.results);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to fetch music from Jamendo" });
-  }
-});

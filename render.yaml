@@ -12,5 +12,3 @@ services:
         sync: false
       - key: ROLE_KEY
         sync: false
-      - key: JAMENDO_CLIENT_ID
-        sync: false
