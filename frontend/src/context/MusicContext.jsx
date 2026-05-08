@@ -71,24 +71,39 @@ export const MusicProvider = ({ children }) => {
       if (queueSongs.length === 0 || !currentSong) return;
 
       const currentIndex = queueSongs.findIndex((s) => s.id === currentSong.id);
+
+      // If the current song isn't found in the active queue, fallback to first.
+      if (currentIndex === -1) {
+        playSong(queueSongs[0], null, true);
+        return;
+      }
+
       const nextIndex = currentIndex + 1;
 
-      // Handle "Repeat One" for automatic transitions
+      // "Repeat One" only affects automatic transitions (track ended)
       if (isAutomatic && repeatMode === "one") {
         audioRef.current.currentTime = 0;
         audioRef.current.play();
         return;
       }
 
+      // Manual Next: always wrap last -> first
+      if (!isAutomatic && nextIndex >= queueSongs.length) {
+        playSong(queueSongs[0], null, true);
+        return;
+      }
+
+      // Automatic ended: respect repeat mode
       if (nextIndex >= queueSongs.length) {
-        if (!isAutomatic || repeatMode === "all") {
+        if (repeatMode === "all") {
           playSong(queueSongs[0], null, true);
         } else {
           stopMusic();
         }
-      } else {
-        playSong(queueSongs[nextIndex], null, true);
+        return;
       }
+
+      playSong(queueSongs[nextIndex], null, true);
     },
     [queueSongs, currentSong, repeatMode],
   );
