@@ -14,6 +14,7 @@ import PlaylistDetails from "./pages/PlaylistDetails"; // Ensure this is importe
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import { MusicProvider } from "./context/MusicContext";
+import ResetPassword from "./pages/ResetPassword";
 import "./App.css";
 
 function App() {
@@ -32,6 +33,7 @@ function App() {
             <Route path="/admin" element={<Navigate to="/admin/login" />} />
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
           </Route>
         </Routes>
       </MusicProvider>
