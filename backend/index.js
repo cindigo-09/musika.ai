@@ -170,7 +170,8 @@ app.delete("/api/songs/:songId", (req, res) => {
   }
 });
 
-app.listen(8080, () => console.log("Server running on port 8080"));
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 // Update song details
 app.put("/api/songs/:songId", (req, res) => {
