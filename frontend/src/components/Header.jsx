@@ -7,7 +7,7 @@ import { User } from "lucide-react";
 
 function Header() {
   const navigate = useNavigate();
-  const { stopMusic, saveProgress } = useMusic(); // Use the hook
+  const { closePlayer } = useMusic(); // Use the hook
   const [currentUser, setCurrentUser] = useState("Guest");
   const [profile, setProfile] = useState({ avatar_url: "" });
 
@@ -67,17 +67,23 @@ function Header() {
   }, []);
 
   const handleLogout = async () => {
+  try {
     // Stop music before logging out
-    stopMusic();
+    if (closePlayer) closePlayer();
 
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error("Error logging out:", error.message);
+      alert("Logout failed. Please try again.");
     } else {
       // Clear any local state if necessary and redirect
       navigate("/login");
     }
-  };
+  } catch (err) {
+    console.error("Logout exception:", err);
+    alert("An error occurred during logout.");
+  }
+};
 
   return (
     <header

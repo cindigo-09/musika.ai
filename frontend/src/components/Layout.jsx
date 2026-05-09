@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { useMusic } from "../context/MusicContext";
 import {
   Play,
@@ -13,6 +13,11 @@ import {
 import Chatbot from "./Chatbot";
 
 const Layout = () => {
+  const location = useLocation();
+  const isDashboardRoute = location.pathname.startsWith('/home') || 
+                           location.pathname.startsWith('/profile') || 
+                           location.pathname.startsWith('/playlists');
+
   const {
     currentSong,
     isPlaying,
@@ -167,7 +172,7 @@ const Layout = () => {
 
       {/* CHATBOT CONDITIONAL RENDERING */}
       {/* settings.chatbotDisabled controls the global visibility of the AI Assistant */}
-      {!settings.chatbotDisabled && <Chatbot />}
+      {isDashboardRoute && !settings.chatbotDisabled && <Chatbot />}
     </div>
   );
 };
