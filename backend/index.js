@@ -84,7 +84,7 @@ app.put("/api/user/:id/profile", async (req, res) => {
     await supabaseAdmin.from("playlists").insert({
       name: "Favorites",
       user_id: req.params.id,
-      description: "Your favorite tracks."
+      description: "Your favorite tracks.",
     });
   }
 
@@ -176,13 +176,16 @@ app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 // Update song details
 app.put("/api/songs/:songId", (req, res) => {
   try {
-    const { title, artist } = req.body;
+    const { title, artist, mood_tag } = req.body;
     const songs = getSongs();
     const index = songs.findIndex((s) => s.song_id === req.params.songId);
 
     if (index !== -1) {
       songs[index].title = title || songs[index].title;
       songs[index].artist = artist || songs[index].artist;
+      if (typeof mood_tag !== "undefined") {
+        songs[index].mood_tag = mood_tag;
+      }
       saveSongs(songs);
       return res.json(songs[index]);
     }
@@ -191,4 +194,3 @@ app.put("/api/songs/:songId", (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
