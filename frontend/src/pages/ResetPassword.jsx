@@ -46,10 +46,19 @@ export default function ResetPassword() {
 
     setLoading(true);
     try {
+      // Verify session exists (meaning the reset token was valid and processed)
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error("Your password reset link has expired or is invalid. Please request a new one from the login page.");
+      }
+
       const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword,
       });
+      
       if (updateError) throw updateError;
+      
       setSuccess(true);
       // Redirect to login after 3 seconds
       setTimeout(() => navigate("/login"), 3000);
