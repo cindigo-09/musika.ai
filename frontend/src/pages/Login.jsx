@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
+import { toast } from "react-hot-toast";
 import { supabase } from "../supabaseClient";
+import logo from "../assets/logo-musikaAI.svg";
 
 export default function Login() {
   const [view, setView] = useState("login"); // "login" | "forgot"
@@ -29,9 +31,10 @@ export default function Login() {
       localStorage.setItem("username", data.user.email);
       localStorage.setItem("userId", data.user.id);
 
+      toast.success("Welcome back to Musika AI!");
       navigate("/home");
     } catch (error) {
-      alert(error.message || "An error occurred during login");
+      toast.error(error.message || "An error occurred during login");
     } finally {
       setLoading(false);
     }
@@ -75,7 +78,8 @@ export default function Login() {
       <div className="container-fluid">
         <div className="row g-0">
           <div className="col-md-6 d-flex flex-column justify-content-center align-items-center text-center p-5">
-            <h1 className="page-title display-4">MUSIKA AI</h1>
+            <img src={logo} alt="Musika AI" height="200" className="mb-2 logo-coin-spin" />
+            <h1 className="page-title display-3 mb-3">MUSIKA AI</h1>
             <p className="text-white opacity-75 font-italic">
               "A music player to bridge the gap between your soul and the
               different human melodies."

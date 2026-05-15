@@ -9,14 +9,19 @@ import {
   Repeat1,
   Volume2,
   X,
+  Music,
+  Shield,
 } from "lucide-react";
 import Chatbot from "./Chatbot";
+import Toast from "./Toast";
 
 const Layout = () => {
   const location = useLocation();
   const isDashboardRoute = location.pathname.startsWith('/home') || 
                            location.pathname.startsWith('/profile') || 
-                           location.pathname.startsWith('/playlists');
+                           location.pathname.startsWith('/playlists') ||
+                           location.pathname.startsWith('/search') ||
+                           location.pathname.startsWith('/user');
 
   const {
     currentSong,
@@ -33,7 +38,7 @@ const Layout = () => {
     closePlayer,
     volume,
     setVolume,
-    settings, // Added settings to handle the AI toggle
+    settings,
   } = useMusic();
 
   const formatTime = (time) => {
@@ -53,6 +58,7 @@ const Layout = () => {
 
   return (
     <div className="layout">
+      <Toast />
       <Outlet />
 
       {currentSong && (
@@ -65,14 +71,22 @@ const Layout = () => {
             className="d-flex align-items-center gap-3"
             style={{ width: "25%" }}
           >
-            <img
-              src={currentSong.cover_url}
-              alt=""
-              className="rounded shadow"
-              width="50"
-              height="50"
-              style={{ objectFit: "cover" }}
-            />
+            <div 
+              className="rounded bg-dark border border-secondary border-opacity-25 overflow-hidden shadow-sm flex-shrink-0"
+              style={{ width: '50px', height: '50px' }}
+            >
+              {currentSong.cover_url ? (
+                <img
+                  src={currentSong.cover_url}
+                  alt=""
+                  className="w-100 h-100 object-fit-cover"
+                />
+              ) : (
+                <div className="w-100 h-100 d-flex align-items-center justify-content-center">
+                  <Music size={24} className="text-secondary opacity-25" />
+                </div>
+              )}
+            </div>
             <div className="overflow-hidden">
               <div className="fw-bold text-truncate">{currentSong.title}</div>
               <div className="small text-secondary text-truncate">
@@ -129,7 +143,7 @@ const Layout = () => {
               </span>
               <input
                 type="range"
-                className="form-range flex-grow-1 custom-progress"
+                className="form-range flex-grow-1 mana-progress"
                 min="0"
                 max={duration || 0}
                 value={currentTime}
@@ -152,7 +166,7 @@ const Layout = () => {
             <Volume2 size={20} className="text-secondary" />
             <input
               type="range"
-              className="form-range"
+              className="form-range shield-volume"
               style={{ width: "80px" }}
               min="0"
               max="1"

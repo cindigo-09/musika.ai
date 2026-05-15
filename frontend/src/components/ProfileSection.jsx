@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
-import { Camera, Loader2, User } from "lucide-react";
+import { Camera, Loader2, User, X, ArrowLeft } from "lucide-react";
+import { useMusic } from "../context/MusicContext";
+import { useNavigate } from "react-router-dom";
 
 const slugify = (text) => {
   return text
@@ -12,15 +14,27 @@ const slugify = (text) => {
 };
 
 function ProfileSection() {
+  const { triggerToast } = useMusic();
+  const navigate = useNavigate();
   const [userId, setUserId] = useState(null);
   const [profile, setProfile] = useState({
     username: "",
     bio: "",
     avatar_url: "",
+    is_public: true,
+    show_history: true,
   });
   const [loading, setLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [savingMessage, setSavingMessage] = useState("");
+  
+  const [followerCount, setFollowerCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [followersList, setFollowersList] = useState([]);
+  const [followingList, setFollowingList] = useState([]);
+  const [showFollowersModal, setShowFollowersModal] = useState(false);
+  const [showFollowingModal, setShowFollowingModal] = useState(false);
+  const [loadingFollowers, setLoadingFollowers] = useState(false);
+  const [loadingFollowing, setLoadingFollowing] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -38,7 +52,7 @@ function ProfileSection() {
 
       const { data } = await supabase
         .from("profiles")
-        .select("username, bio, avatar_url")
+        .select("username, bio, avatar_url, is_public, show_history")
         .eq("id", user.id)
         .single();
 
@@ -47,7 +61,23 @@ function ProfileSection() {
           username: data.username || "New User",
           bio: data.bio || "",
           avatar_url: data.avatar_url || "",
+          is_public: data.is_public ?? true,
+          show_history: data.show_history ?? true,
         });
+
+        // Fetch Follow Counts
+        const { count: followers } = await supabase
+          .from("follows")
+          .select("*", { count: 'exact', head: true })
+          .eq("following_id", user.id);
+        
+        const { count: following } = await supabase
+          .from("follows")
+          .select("*", { count: 'exact', head: true })
+          .eq("follower_id", user.id);
+        
+        setFollowerCount(followers || 0);
+        setFollowingCount(following || 0);
       }
     };
     fetchProfile();
@@ -91,8 +121,9 @@ function ProfileSection() {
         .eq("id", userId);
 
       setProfile((prev) => ({ ...prev, avatar_url: publicUrl }));
+      triggerToast("Avatar updated successfully!");
     } catch (err) {
-      alert(err.message);
+      triggerToast(err.message, "error");
     } finally {
       setIsUploading(false);
     }
@@ -107,15 +138,46 @@ function ProfileSection() {
         .update({
           username: profile.username,
           bio: profile.bio,
+          is_public: profile.is_public,
+          show_history: profile.show_history,
         })
         .eq("id", userId);
-      setSavingMessage("Changes saved successfully!");
-      setTimeout(() => setSavingMessage(""), 3000);
+      triggerToast("Profile changes saved!");
     } catch (err) {
-      alert(err.message);
+      triggerToast(err.message, "error");
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchFollowers = async () => {
+    if (!userId) return;
+    setLoadingFollowers(true);
+    try {
+      const { data } = await supabase
+        .from("follows")
+        .select(`
+          follower_id,
+          profiles:follower_id (id, username, avatar_url, bio, is_public)
+        `)
+        .eq("following_id", userId);
+      if (data) setFollowersList(data.map(item => item.profiles));
+    } catch (err) { console.error(err); } finally { setLoadingFollowers(false); }
+  };
+
+  const fetchFollowing = async () => {
+    if (!userId) return;
+    setLoadingFollowing(true);
+    try {
+      const { data } = await supabase
+        .from("follows")
+        .select(`
+          following_id,
+          profiles:following_id (id, username, avatar_url, bio, is_public)
+        `)
+        .eq("follower_id", userId);
+      if (data) setFollowingList(data.map(item => item.profiles));
+    } catch (err) { console.error(err); } finally { setLoadingFollowing(false); }
   };
 
   return (
@@ -176,6 +238,29 @@ function ProfileSection() {
           <p className="text-secondary small mb-0">
             Update your photo and personal details.
           </p>
+
+          <div className="d-flex gap-4 mt-3">
+            <div 
+              className="cursor-pointer hover-text-warning"
+              onClick={() => {
+                setShowFollowersModal(true);
+                fetchFollowers();
+              }}
+            >
+              <span className="fw-bold h5 mb-0 text-white">{followerCount}</span>
+              <span className="text-secondary small text-uppercase fw-bold ms-2" style={{ fontSize: '10px', letterSpacing: '1px' }}>Followers</span>
+            </div>
+            <div 
+              className="cursor-pointer hover-text-warning"
+              onClick={() => {
+                setShowFollowingModal(true);
+                fetchFollowing();
+              }}
+            >
+              <span className="fw-bold h5 mb-0 text-white">{followingCount}</span>
+              <span className="text-secondary small text-uppercase fw-bold ms-2" style={{ fontSize: '10px', letterSpacing: '1px' }}>Following</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -194,11 +279,41 @@ function ProfileSection() {
           />
         </div>
 
-        {savingMessage && (
-          <div className="alert alert-warning py-2 small fw-bold mb-3">
-            {savingMessage}
+        <div className="mb-5">
+          <label className="small text-warning text-uppercase fw-bold mb-3 d-block">
+            Privacy & Social
+          </label>
+          
+          <div className="d-flex justify-content-between align-items-center mb-3 p-3 rounded-3 bg-dark bg-opacity-25 border border-secondary border-opacity-10">
+            <div>
+              <div className="fw-bold text-white small">Searchable Account</div>
+              <p className="text-secondary x-small mb-0">Allow others to find you in search results</p>
+            </div>
+            <div className="form-check form-switch">
+              <input 
+                className="form-check-input custom-switch" 
+                type="checkbox" 
+                checked={profile.is_public}
+                onChange={(e) => setProfile({ ...profile, is_public: e.target.checked })}
+              />
+            </div>
           </div>
-        )}
+
+          <div className="d-flex justify-content-between align-items-center mb-3 p-3 rounded-3 bg-dark bg-opacity-25 border border-secondary border-opacity-10">
+            <div>
+              <div className="fw-bold text-white small">Show Listening History</div>
+              <p className="text-secondary x-small mb-0">Make your activity visible on your public profile</p>
+            </div>
+            <div className="form-check form-switch">
+              <input 
+                className="form-check-input custom-switch" 
+                type="checkbox" 
+                checked={profile.show_history}
+                onChange={(e) => setProfile({ ...profile, show_history: e.target.checked })}
+              />
+            </div>
+          </div>
+        </div>
 
         <button
           type="submit"
@@ -216,7 +331,79 @@ function ProfileSection() {
         }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+        .hover-text-warning:hover { color: #ffc107 !important; transition: color 0.2s; }
+        .hover-bg-dark:hover { background: rgba(255,255,255,0.05); transition: background 0.2s; }
       `}</style>
+
+      {/* Followers Modal */}
+      {showFollowersModal && (
+        <div className="position-fixed top-0 start-0 w-100 vh-100 d-flex align-items-center justify-content-center" style={{ background: 'rgba(0,0,0,0.85)', zIndex: 2000 }}>
+          <div className="musika-card p-4 custom-scrollbar" style={{ width: '450px', maxHeight: '80vh', background: '#121216', border: '1px solid #ffc107', overflowY: 'auto' }}>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h5 className="text-warning m-0 fw-bold">YOUR FOLLOWERS</h5>
+              <button className="btn btn-link text-secondary p-0" onClick={() => setShowFollowersModal(false)}><X size={20} /></button>
+            </div>
+            {loadingFollowers ? (
+              <div className="text-center py-4"><div className="spinner-border text-warning spinner-border-sm"></div></div>
+            ) : followersList.length > 0 ? (
+              <div className="d-flex flex-column gap-3">
+                {followersList.map(follower => (
+                  <div key={follower.id} className="d-flex align-items-center justify-content-between p-2 rounded hover-bg-dark cursor-pointer" onClick={() => {
+                    if (follower.id === userId || follower.is_public) { setShowFollowersModal(false); navigate(`/user/${follower.id}`); }
+                    else { triggerToast("This account is private", "info"); }
+                  }}>
+                    <div className="d-flex align-items-center gap-3">
+                      <div className="rounded-circle overflow-hidden border border-secondary" style={{ width: 40, height: 40 }}>
+                        {follower.avatar_url ? <img src={follower.avatar_url} className="w-100 h-100 object-fit-cover" alt="" /> : <User size={20} className="text-secondary m-2" />}
+                      </div>
+                      <div>
+                        <div className="fw-bold small">{follower.username || "Anonymous"}</div>
+                        <div className="text-secondary x-small text-truncate" style={{ maxWidth: '200px' }}>{follower.bio || "No bio"}</div>
+                      </div>
+                    </div>
+                    <ArrowLeft size={16} className="text-secondary opacity-25" style={{ transform: 'rotate(180deg)' }} />
+                  </div>
+                ))}
+              </div>
+            ) : <p className="text-secondary text-center py-4">No followers yet.</p>}
+          </div>
+        </div>
+      )}
+
+      {/* Following Modal */}
+      {showFollowingModal && (
+        <div className="position-fixed top-0 start-0 w-100 vh-100 d-flex align-items-center justify-content-center" style={{ background: 'rgba(0,0,0,0.85)', zIndex: 2000 }}>
+          <div className="musika-card p-4 custom-scrollbar" style={{ width: '450px', maxHeight: '80vh', background: '#121216', border: '1px solid #0dcaf0', overflowY: 'auto' }}>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h5 className="text-info m-0 fw-bold">YOU ARE FOLLOWING</h5>
+              <button className="btn btn-link text-secondary p-0" onClick={() => setShowFollowingModal(false)}><X size={20} /></button>
+            </div>
+            {loadingFollowing ? (
+              <div className="text-center py-4"><div className="spinner-border text-info spinner-border-sm"></div></div>
+            ) : followingList.length > 0 ? (
+              <div className="d-flex flex-column gap-3">
+                {followingList.map(following => (
+                  <div key={following.id} className="d-flex align-items-center justify-content-between p-2 rounded hover-bg-dark cursor-pointer" onClick={() => {
+                    if (following.id === userId || following.is_public) { setShowFollowingModal(false); navigate(`/user/${following.id}`); }
+                    else { triggerToast("This account is private", "info"); }
+                  }}>
+                    <div className="d-flex align-items-center gap-3">
+                      <div className="rounded-circle overflow-hidden border border-secondary" style={{ width: 40, height: 40 }}>
+                        {following.avatar_url ? <img src={following.avatar_url} className="w-100 h-100 object-fit-cover" alt="" /> : <User size={20} className="text-secondary m-2" />}
+                      </div>
+                      <div>
+                        <div className="fw-bold small">{following.username || "Anonymous"}</div>
+                        <div className="text-secondary x-small text-truncate" style={{ maxWidth: '200px' }}>{following.bio || "No bio"}</div>
+                      </div>
+                    </div>
+                    <ArrowLeft size={16} className="text-secondary opacity-25" style={{ transform: 'rotate(180deg)' }} />
+                  </div>
+                ))}
+              </div>
+            ) : <p className="text-secondary text-center py-4">You are not following anyone yet.</p>}
+          </div>
+        </div>
+      )}
     </section>
   );
 }

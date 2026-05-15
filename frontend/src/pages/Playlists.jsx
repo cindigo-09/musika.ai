@@ -13,6 +13,7 @@ export default function Playlists() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState("");
+  const [isPublic, setIsPublic] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -54,7 +55,12 @@ export default function Playlists() {
     const { data, error } = await supabase
       .from("playlists")
       .insert([
-        { name, user_id: session.user.id, owner_email: session.user.email },
+        { 
+          name, 
+          user_id: session.user.id, 
+          owner_email: session.user.email,
+          is_public: isPublic
+        },
       ])
       .select()
       .single();
@@ -182,6 +188,17 @@ export default function Playlists() {
                 onChange={(e) => setName(e.target.value)}
                 autoFocus
               />
+              <div className="d-flex justify-content-between align-items-center mb-4 p-3 rounded-3 bg-dark border border-secondary border-opacity-10">
+                <div className="small fw-bold">PUBLIC PLAYLIST</div>
+                <div className="form-check form-switch">
+                  <input 
+                    className="form-check-input custom-switch" 
+                    type="checkbox" 
+                    checked={isPublic}
+                    onChange={(e) => setIsPublic(e.target.checked)}
+                  />
+                </div>
+              </div>
               <div className="d-flex gap-2">
                 <button className="btn btn-warning w-100 fw-bold">
                   CREATE

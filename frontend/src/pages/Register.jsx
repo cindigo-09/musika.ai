@@ -2,6 +2,10 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
+import logo from "../assets/logo-musikaAI.svg";
+
+import { toast } from "react-hot-toast";
+
 export default function Register() {
   const [genres, setGenres] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -41,7 +45,7 @@ export default function Register() {
     const genre = formData.get("genre");
 
     if (password !== confirmPassword) {
-      alert("Passwords do not match!");
+      toast.error("Passwords do not match!");
       setLoading(false);
       return;
     }
@@ -79,12 +83,10 @@ export default function Register() {
         }
       }
 
-      alert(
-        "Registration successful! Check your email to confirm your account.",
-      );
+      toast.success("Registration successful! Check your email to confirm your account.");
       navigate("/login");
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
@@ -95,7 +97,8 @@ export default function Register() {
       <div className="container-fluid">
         <div className="row g-0">
           <div className="col-md-6 d-flex flex-column justify-content-center align-items-center text-center p-5">
-            <h1 className="page-title display-4">MUSIKA AI</h1>
+            <img src={logo} alt="Musika AI" height="200" className="mb-2 logo-coin-spin" />
+            <h1 className="page-title display-3 mb-3">MUSIKA AI</h1>
             <p className="text-white opacity-75 font-italic mt-3">
               "Define your mood within the notes of music."
             </p>

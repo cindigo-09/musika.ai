@@ -4,6 +4,7 @@ import {
   Plus,
   Play,
   Pause,
+  Music,
   Trash2,
   Edit2,
   Check,
@@ -11,6 +12,7 @@ import {
   Loader2,
   AlertTriangle,
   Heart,
+  Camera,
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { useMusic } from "../context/MusicContext";
@@ -78,6 +80,9 @@ export default function Home() {
     isPlaying,
     updateSongInList,
     stopMusic,
+    triggerToast,
+    favoriteSongIds,
+    toggleFavorite,
   } = useMusic();
 
   const handlePlayLibrarySong = (song, currentQueue) => {
@@ -94,19 +99,21 @@ export default function Home() {
     moods: [],
   });
   const [file, setFile] = useState(null);
+  const [coverFile, setCoverFile] = useState(null);
+  const [coverPreview, setCoverPreview] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [successMsg, setSuccessMsg] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState({
     show: false,
     song: null,
   });
   const [editingSong, setEditingSong] = useState(null);
+  const [editCoverFile, setEditCoverFile] = useState(null);
+  const [editCoverPreview, setEditCoverPreview] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [userPlaylists, setUserPlaylists] = useState([]);
   const [selectedSongId, setSelectedSongId] = useState(null);
   const [showPlaylistPicker, setShowPlaylistPicker] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
-  const [favoriteSongIds, setFavoriteSongIds] = useState(new Set());
 
   const toggleGenre = (g) => {
     setForm((prev) => ({
@@ -128,37 +135,8 @@ export default function Home() {
 
   useEffect(() => {
     fetchSongs();
-    fetchFavorites();
   }, []);
 
-  const fetchFavorites = async () => {
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const { data: favPlaylist } = await supabase
-        .from("playlists")
-        .select("id")
-        .eq("user_id", session.user.id)
-        .eq("name", "Favorites")
-        .single();
-
-      if (favPlaylist) {
-        const { data: favSongs } = await supabase
-          .from("playlist_songs")
-          .select("song_id")
-          .eq("playlist_id", favPlaylist.id);
-
-        if (favSongs) {
-          setFavoriteSongIds(new Set(favSongs.map((s) => s.song_id)));
-        }
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   const fetchSongs = async () => {
     // 1. Get the current logged-in user to separate library ownership
@@ -175,11 +153,6 @@ export default function Home() {
       .select("*")
       .order("created_at", { ascending: false });
     if (!error) setSongs(data || []);
-  };
-
-  const triggerSuccess = (msg) => {
-    setSuccessMsg(msg);
-    setTimeout(() => setSuccessMsg(""), 3000);
   };
 
   const openPlaylistPicker = async (songId) => {
@@ -213,13 +186,13 @@ export default function Home() {
         .select()
         .single();
       if (!error) {
-        triggerSuccess(`Playlist created!`);
+        triggerToast(`Playlist created!`);
         const { error: joinError } = await supabase
           .from("playlist_songs")
           .insert([{ playlist_id: newPlaylist.id, song_id: selectedSongId }]);
 
         if (!joinError) {
-          triggerSuccess("Added to new playlist!");
+          triggerToast("Added to new playlist!");
           setShowPlaylistPicker(false);
           setNewPlaylistName("");
         }
@@ -234,9 +207,9 @@ export default function Home() {
       .from("playlist_songs")
       .insert([{ playlist_id: playlistId, song_id: selectedSongId }]);
     if (error) {
-      triggerSuccess("Song already in playlist!");
+      triggerToast("Song already in playlist!", "error");
     } else {
-      triggerSuccess("Added to playlist!");
+      triggerToast("Added to playlist!");
       setShowPlaylistPicker(false);
     }
   };
@@ -281,7 +254,7 @@ export default function Home() {
           const newSet = new Set(favoriteSongIds);
           newSet.delete(songId);
           setFavoriteSongIds(newSet);
-          triggerSuccess("Removed from Favorites");
+          triggerToast("Removed from Favorites");
         }
       } else {
         const { error } = await supabase
@@ -292,12 +265,12 @@ export default function Home() {
           const newSet = new Set(favoriteSongIds);
           newSet.add(songId);
           setFavoriteSongIds(newSet);
-          triggerSuccess("Added to Favorites!");
+          triggerToast("Added to Favorites!");
         }
       }
     } catch (err) {
       console.error(err);
-      triggerSuccess("Failed to update favorites");
+      triggerToast("Failed to update favorites", "error");
     }
   };
 
@@ -316,17 +289,33 @@ export default function Home() {
         session.user.user_metadata?.full_name || email.split("@")[0];
       const username = slugify(rawName);
 
+      // Upload Song File
       const fileName = `${Date.now()}-${slugify(form.title)}.${file.name.split(".").pop()}`;
       const filePath = `${username}-tracks/${fileName}`;
-
       const { error: uploadError } = await supabase.storage
         .from("songs")
         .upload(filePath, file);
       if (uploadError) throw uploadError;
 
       const {
-        data: { publicUrl },
+        data: { publicUrl: songUrl },
       } = supabase.storage.from("songs").getPublicUrl(filePath);
+
+      // Upload Cover Art if present
+      let coverUrl = null;
+      if (coverFile) {
+        const coverName = `cover-${Date.now()}-${slugify(form.title)}.${coverFile.name.split(".").pop()}`;
+        const coverPath = `${username}-tracks/${coverName}`;
+        const { error: coverUploadError } = await supabase.storage
+          .from("songs")
+          .upload(coverPath, coverFile);
+        if (!coverUploadError) {
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from("songs").getPublicUrl(coverPath);
+          coverUrl = publicUrl;
+        }
+      }
 
       const { data: songData, error: dbError } = await supabase
         .from("songs")
@@ -334,7 +323,8 @@ export default function Home() {
           {
             title: form.title,
             artist: form.artist,
-            song_url: publicUrl,
+            song_url: songUrl,
+            cover_url: coverUrl,
             user_id: session.user.id,
             genre: (form.genres || []).join(","),
             mood_tag: (form.moods || []).join(","),
@@ -353,29 +343,64 @@ export default function Home() {
         },
       ]);
 
-      triggerSuccess(`"${form.title}" uploaded!`);
+      triggerToast(`"${form.title}" uploaded!`);
       fetchSongs();
       setShowModal(false);
       setForm({ title: "", artist: "", genres: [], moods: [] });
       setFile(null);
+      setCoverFile(null);
+      setCoverPreview(null);
     } catch (err) {
       console.error("Upload Error:", err);
-      alert("Error uploading: " + (err.message || err.toString()));
+      triggerToast("Error uploading track", "error");
     } finally {
       setLoading(false);
     }
   };
 
   const handleUpdateSong = async (e) => {
-    e.preventDefault(); // Prevent page refresh
+    e.preventDefault();
     setLoading(true);
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const email = session.user.email || "user";
+      const username = slugify(
+        session.user.user_metadata?.full_name || email.split("@")[0],
+      );
+
+      let finalCoverUrl = editingSong.cover_url;
+
+      if (editCoverFile) {
+        // Cleanup old cover art if it exists
+        if (editingSong.cover_url) {
+          try {
+            const oldPath = editingSong.cover_url.split("/songs/")[1].split("?")[0];
+            await supabase.storage.from("songs").remove([oldPath]);
+          } catch (err) {
+            console.log("Old cover art cleanup skipped");
+          }
+        }
+
+        const coverName = `cover-${Date.now()}-${slugify(editingSong.title)}.${editCoverFile.name.split(".").pop()}`;
+        const coverPath = `${username}-tracks/${coverName}`;
+        const { error: coverUploadError } = await supabase.storage
+          .from("songs")
+          .upload(coverPath, editCoverFile);
+        
+        if (!coverUploadError) {
+          const { data: { publicUrl } } = supabase.storage.from("songs").getPublicUrl(coverPath);
+          finalCoverUrl = publicUrl;
+        }
+      }
+
       const { error } = await supabase
         .from("songs")
         .update({
-          title: editingSong.title, // Use editingSong, not form
+          title: editingSong.title,
           artist: editingSong.artist,
-          // Convert arrays to comma-separated strings for your VARCHAR columns
+          cover_url: finalCoverUrl,
           genre: Array.isArray(editingSong.genre)
             ? editingSong.genre.join(",")
             : editingSong.genre,
@@ -385,14 +410,16 @@ export default function Home() {
 
       if (error) throw error;
 
-      triggerSuccess("Track updated!");
+      triggerToast("Track updated!");
       fetchSongs();
       setShowEditModal(false);
+      setEditCoverFile(null);
+      setEditCoverPreview(null);
     } catch (err) {
       console.error("Update Error:", err);
-      alert(err.message);
+      triggerToast(err.message, "error");
     } finally {
-      setLoading(false); // Fix: Set to false, not true
+      setLoading(false);
     }
   };
 
@@ -405,9 +432,15 @@ export default function Home() {
         stopMusic();
       }
 
-      if (songToDelete.song_url?.includes("/public/songs/")) {
-        const filePath = songToDelete.song_url.split("/public/songs/")[1];
+      if (songToDelete.song_url?.includes("/songs/")) {
+        const filePath = songToDelete.song_url.split("/songs/")[1].split("?")[0];
         if (filePath) await supabase.storage.from("songs").remove([filePath]);
+      }
+
+      // Also remove cover art from storage
+      if (songToDelete.cover_url?.includes("/songs/")) {
+        const coverPath = songToDelete.cover_url.split("/songs/")[1].split("?")[0];
+        if (coverPath) await supabase.storage.from("songs").remove([coverPath]);
       }
 
       await supabase.from("songs").delete().eq("id", songToDelete.id);
@@ -422,12 +455,22 @@ export default function Home() {
         },
       ]);
 
-      triggerSuccess("Song deleted!");
+      triggerToast("Song deleted!");
     } catch (err) {
       console.error(err);
-      triggerSuccess("Error deleting song");
+      triggerToast("Error deleting song", "error");
     } finally {
       setDeleteConfirm({ show: false, song: null });
+    }
+  };
+
+  const handleCoverArtChange = (e, setFile, setPreview) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setPreview(reader.result);
+      reader.readAsDataURL(file);
     }
   };
 
@@ -488,90 +531,108 @@ export default function Home() {
   const communityGrouped = getGroupedSongs(communitySongsList);
 
   const renderSongTable = (songList, queueList) => (
-    <table className="table table-dark table-hover mb-5">
-      <thead>
-        <tr className="text-secondary small">
-          <th>#</th>
-          <th>Title</th>
-          <th>Artist</th>
-          <th className="text-end px-4">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {songList.map((s, idx) => (
-          <tr
-            key={s.id}
-            className="align-middle"
-            onClick={() => handlePlayLibrarySong(s, queueList)}
-            style={{ cursor: "pointer" }}
-          >
-            <td className="text-secondary">{idx + 1}</td>
-            <td
-              className={currentSong?.id === s.id ? "text-warning fw-bold" : ""}
-            >
-              {s.title}
-            </td>
-            <td className="text-secondary">{s.artist}</td>
-            <td className="text-end px-4">
-              <button
-                className="btn btn-link text-warning p-0 me-3"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openPlaylistPicker(s.id);
-                }}
-              >
-                <Plus size={18} />
-              </button>
-
-              {/* Only show Edit and Delete if the current user uploaded the track */}
-              {s.user_id === currentUserId && (
-                <>
-                  <button
-                    className="btn btn-link text-info p-0 me-3"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Convert the comma-separated string from DB into an array for the state
-                      const moodArray = s.mood_tag
-                        ? s.mood_tag.split(",").map((m) => m.trim())
-                        : [];
-                      setEditingSong({ ...s, moods: moodArray });
-                      setShowEditModal(true);
-                    }}
-                  >
-                    <Edit2 size={16} />
-                  </button>
-                  <button
-                    className="btn btn-link text-danger p-0 me-3"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteConfirm({ show: true, song: s });
-                    }}
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </>
-              )}
-
-              <button
-                className="btn btn-link p-0"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleFavorite(s.id);
-                }}
-              >
-                <Heart
-                  size={18}
-                  fill={favoriteSongIds.has(s.id) ? "currentColor" : "none"}
-                  className={
-                    favoriteSongIds.has(s.id) ? "text-danger" : "text-secondary"
-                  }
-                />
-              </button>
-            </td>
+    <div className="table-responsive">
+      <table className="table table-dark table-hover mb-5">
+        <thead>
+          <tr className="text-secondary small text-uppercase">
+            <th className="text-center" style={{ width: "80px" }}>Cover</th>
+            <th>Title</th>
+            <th>Artist</th>
+            <th className="text-end px-4">Actions</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {songList.map((s) => (
+            <tr
+              key={s.id}
+              className="align-middle"
+              onClick={() => handlePlayLibrarySong(s, queueList)}
+              style={{ cursor: "pointer" }}
+            >
+              <td className="text-center py-3">
+                <div className="d-flex justify-content-center">
+                  <div 
+                    className="rounded bg-dark border border-secondary border-opacity-25 overflow-hidden shadow-sm flex-shrink-0"
+                    style={{ width: '45px', height: '45px' }}
+                  >
+                    {s.cover_url ? (
+                      <img src={s.cover_url} className="w-100 h-100 object-fit-cover" alt="" />
+                    ) : (
+                      <div className="w-100 h-100 d-flex align-items-center justify-content-center">
+                        <Music size={20} className="text-secondary opacity-25" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </td>
+              <td className={`fw-bold ${currentSong?.id === s.id ? "text-warning" : "text-white"}`}>
+                {s.title}
+              </td>
+              <td className="text-secondary">{s.artist}</td>
+              <td className="text-end px-4">
+                <div className="d-flex justify-content-end align-items-center gap-2">
+                  <button
+                    className="btn btn-link text-warning p-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openPlaylistPicker(s.id);
+                    }}
+                    title="Add to Playlist"
+                  >
+                    <Plus size={18} />
+                  </button>
+
+                  {s.user_id === currentUserId && (
+                    <>
+                      <button
+                        className="btn btn-link text-info p-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const moodArray = s.mood_tag
+                            ? s.mood_tag.split(",").map((m) => m.trim())
+                            : [];
+                          setEditingSong({ ...s, moods: moodArray });
+                          setEditCoverPreview(s.cover_url);
+                          setShowEditModal(true);
+                        }}
+                        title="Edit Track"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        className="btn btn-link text-danger p-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConfirm({ show: true, song: s });
+                        }}
+                        title="Delete Track"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </>
+                  )}
+
+                  <button
+                    className="btn btn-link p-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFavorite(s.id);
+                    }}
+                    title={favoriteSongIds.has(s.id) ? "Remove from Favorites" : "Add to Favorites"}
+                  >
+                    <Heart
+                      size={18}
+                      fill={favoriteSongIds.has(s.id) ? "currentColor" : "none"}
+                      className={favoriteSongIds.has(s.id) ? "text-danger" : "text-secondary"}
+                    />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 
   const renderGroupedSection = ({ groups, uncategorized }, emptyMessage) => (
@@ -615,17 +676,6 @@ export default function Home() {
       style={{ background: "#050508" }}
     >
       <Header />
-      {successMsg && (
-        <div
-          className="position-fixed top-0 start-50 translate-middle-x mt-4"
-          style={{ zIndex: 3000 }}
-        >
-          <div className="bg-success text-white px-4 py-2 rounded-pill shadow-lg d-flex align-items-center gap-2 border border-white border-opacity-25">
-            <Check size={18} />
-            <span className="fw-bold small">{successMsg}</span>
-          </div>
-        </div>
-      )}
 
       <div
         className="container-fluid p-0 d-flex flex-grow-1"
@@ -788,7 +838,52 @@ export default function Home() {
           >
             <h5 className="text-info mb-4 fw-bold">EDIT TRACK</h5>
             <form onSubmit={handleUpdateSong}>
-              {/* Title & Artist inputs remain the same */}
+              {/* Cover Art Edit */}
+              <div className="mb-4 text-center">
+                <div className="position-relative d-inline-block">
+                  <div 
+                    className="rounded-3 border border-secondary border-opacity-25 bg-dark d-flex align-items-center justify-content-center overflow-hidden"
+                    style={{ width: '120px', height: '120px', cursor: 'pointer' }}
+                    onClick={() => document.getElementById('editCoverInput').click()}
+                  >
+                    {editCoverPreview ? (
+                      <img src={editCoverPreview} className="w-100 h-100 object-fit-cover" alt="Preview" />
+                    ) : (
+                      <Music size={40} className="text-secondary opacity-25" />
+                    )}
+                    <div className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-black bg-opacity-50 opacity-0 hover-opacity-100 transition-opacity">
+                      <Camera size={24} className="text-white" />
+                    </div>
+                  </div>
+                  <input 
+                    id="editCoverInput"
+                    type="file" 
+                    hidden 
+                    accept="image/*" 
+                    onChange={(e) => handleCoverArtChange(e, setEditCoverFile, setEditCoverPreview)}
+                  />
+                  <div className="x-small text-secondary mt-2">Update Cover Art</div>
+                </div>
+              </div>
+
+              <input
+                type="text"
+                placeholder="Title"
+                className="form-control musika-input mb-3"
+                value={editingSong.title}
+                onChange={(e) =>
+                  setEditingSong({ ...editingSong, title: e.target.value })
+                }
+              />
+              <input
+                type="text"
+                placeholder="Artist"
+                className="form-control musika-input mb-3"
+                value={editingSong.artist}
+                onChange={(e) =>
+                  setEditingSong({ ...editingSong, artist: e.target.value })
+                }
+              />
 
               {/* Genre Selection */}
               <div className="mb-3">
@@ -879,6 +974,34 @@ export default function Home() {
           >
             <h5 className="text-warning mb-4 fw-bold">UPLOAD TRACK</h5>
             <form onSubmit={handleUpload}>
+              {/* Cover Art Upload */}
+              <div className="mb-4 text-center">
+                <div className="position-relative d-inline-block">
+                  <div 
+                    className="rounded-3 border border-secondary border-opacity-25 bg-dark d-flex align-items-center justify-content-center overflow-hidden"
+                    style={{ width: '120px', height: '120px', cursor: 'pointer' }}
+                    onClick={() => document.getElementById('coverInput').click()}
+                  >
+                    {coverPreview ? (
+                      <img src={coverPreview} className="w-100 h-100 object-fit-cover" alt="Preview" />
+                    ) : (
+                      <Music size={40} className="text-secondary opacity-25" />
+                    )}
+                    <div className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-black bg-opacity-50 opacity-0 hover-opacity-100 transition-opacity">
+                      <Camera size={24} className="text-white" />
+                    </div>
+                  </div>
+                  <input 
+                    id="coverInput"
+                    type="file" 
+                    hidden 
+                    accept="image/*" 
+                    onChange={(e) => handleCoverArtChange(e, setCoverFile, setCoverPreview)}
+                  />
+                  <div className="x-small text-secondary mt-2">Add Cover Art</div>
+                </div>
+              </div>
+
               <input
                 type="text"
                 placeholder="Title"

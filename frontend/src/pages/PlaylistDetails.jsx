@@ -35,8 +35,16 @@ export default function PlaylistDetails() {
   const navigate = useNavigate();
 
   // FIXED: Restored stopMusic, repeatMode, and toggleRepeat to prevent crashes
-  const { playSong, currentSong, stopMusic, repeatMode, toggleRepeat } =
-    useMusic();
+  const {
+    playSong,
+    currentSong,
+    stopMusic,
+    repeatMode,
+    toggleRepeat,
+    triggerToast,
+    favoriteSongIds,
+    toggleFavorite,
+  } = useMusic();
 
   const [playlist, setPlaylist] = useState(null);
   const [playlistSongs, setPlaylistSongs] = useState([]);
@@ -47,6 +55,7 @@ export default function PlaylistDetails() {
   const [playlistEditForm, setPlaylistEditForm] = useState({
     name: "",
     description: "",
+    is_public: true,
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showClearFavoritesConfirm, setShowClearFavoritesConfirm] =
@@ -54,37 +63,35 @@ export default function PlaylistDetails() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
-  const [favoriteSongIds, setFavoriteSongIds] = useState(new Set());
+  const [suggestedSongs, setSuggestedSongs] = useState([]);
 
   const isFavoritesPlaylist = playlist?.name === "Favorites";
 
   useEffect(() => {
     fetchPlaylistData();
-    fetchFavorites();
   }, [id]);
 
-  const fetchFavorites = async () => {
+  useEffect(() => {
+    if (showAddModal) {
+      fetchSuggestions();
+    }
+  }, [showAddModal]);
+
+  const fetchSuggestions = async () => {
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
-      const { data: favPlaylist } = await supabase
-        .from("playlists")
-        .select("id")
-        .eq("user_id", session.user.id)
-        .eq("name", "Favorites")
-        .single();
-      if (favPlaylist) {
-        const { data: favSongs } = await supabase
-          .from("playlist_songs")
-          .select("song_id")
-          .eq("playlist_id", favPlaylist.id);
-        if (favSongs)
-          setFavoriteSongIds(new Set(favSongs.map((s) => s.song_id)));
+      const existingIds = playlistSongs.map(s => s.id);
+      let query = supabase.from("songs").select("*").limit(20);
+      
+      if (existingIds.length > 0) {
+        query = query.not("id", "in", `(${existingIds.join(",")})`);
       }
+
+      const { data } = await query;
+      // Shuffle or just pick first 5
+      const shuffled = (data || []).sort(() => 0.5 - Math.random());
+      setSuggestedSongs(shuffled.slice(0, 5));
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching suggestions:", err);
     }
   };
 
@@ -101,11 +108,12 @@ export default function PlaylistDetails() {
       setPlaylistEditForm({
         name: meta.name || "",
         description: meta.description || "",
+        is_public: meta.is_public ?? true,
       });
 
       const { data: songsData } = await supabase
         .from("playlist_songs")
-        .select(`song_id, order_index, songs (id, title, artist, song_url)`)
+        .select(`song_id, order_index, songs (id, title, artist, song_url, cover_url)`)
         .eq("playlist_id", id)
         .order("order_index", { ascending: true });
 
@@ -165,8 +173,9 @@ export default function PlaylistDetails() {
         .eq("id", id);
 
       setPlaylist((prev) => ({ ...prev, image_url: publicUrl }));
+      triggerToast("Playlist photo updated!");
     } catch (err) {
-      alert("Error: " + err.message);
+      triggerToast(err.message, "error");
     } finally {
       setIsUploading(false);
     }
@@ -176,17 +185,29 @@ export default function PlaylistDetails() {
     e.preventDefault();
     const { error } = await supabase
       .from("playlists")
-      .update(playlistEditForm)
+      .update({
+        name: playlistEditForm.name,
+        description: playlistEditForm.description,
+        is_public: playlistEditForm.is_public,
+      })
       .eq("id", id);
     if (!error) {
       setPlaylist({ ...playlist, ...playlistEditForm });
       setIsEditingPlaylist(false);
+      triggerToast("Playlist details saved!");
+    } else {
+      triggerToast(error.message, "error");
     }
   };
 
   const handleDeletePlaylist = async () => {
     const { error } = await supabase.from("playlists").delete().eq("id", id);
-    if (!error) navigate("/playlists");
+    if (!error) {
+      triggerToast("Playlist deleted");
+      navigate("/playlists");
+    } else {
+      triggerToast(error.message, "error");
+    }
   };
 
   const handleClearAllFavorites = async () => {
@@ -197,6 +218,9 @@ export default function PlaylistDetails() {
     if (!error) {
       setPlaylistSongs([]);
       setShowClearFavoritesConfirm(false);
+      triggerToast("Favorites cleared");
+    } else {
+      triggerToast(error.message, "error");
     }
   };
 
@@ -220,6 +244,9 @@ export default function PlaylistDetails() {
     if (!error) {
       setShowAddModal(false);
       fetchPlaylistData();
+      triggerToast("Song added to playlist");
+    } else {
+      triggerToast("Song already in playlist", "error");
     }
   };
 
@@ -358,10 +385,11 @@ export default function PlaylistDetails() {
             </div>
           </div>
 
-          <table className="table table-dark table-hover border-secondary">
+          <div className="table-responsive">
+            <table className="table table-dark table-hover border-secondary">
             <thead>
               <tr className="text-secondary small text-uppercase">
-                <th style={{ width: "50px" }}>#</th>
+                <th className="text-center" style={{ width: "80px" }}>Cover</th>
                 <th>Title</th>
                 <th>Artist</th>
                 <th className="text-end px-4">Actions</th>
@@ -375,7 +403,22 @@ export default function PlaylistDetails() {
                   onClick={() => playSong(s, playlistSongs)}
                   style={{ cursor: "pointer" }}
                 >
-                  <td className="text-secondary">{idx + 1}</td>
+                  <td className="text-center py-3">
+                    <div className="d-flex justify-content-center">
+                      <div 
+                        className="rounded bg-dark border border-secondary border-opacity-25 overflow-hidden shadow-sm flex-shrink-0"
+                        style={{ width: '45px', height: '45px' }}
+                      >
+                        {s.cover_url ? (
+                          <img src={s.cover_url} className="w-100 h-100 object-fit-cover" alt="" />
+                        ) : (
+                          <div className="w-100 h-100 d-flex align-items-center justify-content-center">
+                            <Music size={20} className="text-secondary opacity-25" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </td>
                   <td
                     className={`fw-bold ${currentSong?.id === s.id ? "text-warning" : "text-white"}`}
                   >
@@ -383,20 +426,29 @@ export default function PlaylistDetails() {
                   </td>
                   <td className="text-secondary">{s.artist}</td>
                   <td className="text-end px-4">
-                    <Heart
-                      size={18}
-                      fill={favoriteSongIds.has(s.id) ? "currentColor" : "none"}
-                      className={
-                        favoriteSongIds.has(s.id)
-                          ? "text-danger"
-                          : "text-secondary"
-                      }
-                    />
+                    <button
+                      className="btn btn-link p-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(s.id);
+                      }}
+                    >
+                      <Heart
+                        size={18}
+                        fill={favoriteSongIds.has(s.id) ? "currentColor" : "none"}
+                        className={
+                          favoriteSongIds.has(s.id)
+                            ? "text-danger"
+                            : "text-secondary"
+                        }
+                      />
+                    </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         </main>
       </div>
 
@@ -446,6 +498,17 @@ export default function PlaylistDetails() {
                 }
                 rows={3}
               />
+              <div className="d-flex justify-content-between align-items-center mb-4 p-3 rounded-3 bg-dark border border-secondary border-opacity-10">
+                <div className="small fw-bold text-white">PUBLIC PLAYLIST</div>
+                <div className="form-check form-switch">
+                  <input 
+                    className="form-check-input custom-switch" 
+                    type="checkbox" 
+                    checked={playlistEditForm.is_public}
+                    onChange={(e) => setPlaylistEditForm({ ...playlistEditForm, is_public: e.target.checked })}
+                  />
+                </div>
+              </div>
               <button className="btn btn-info w-100 fw-bold" type="submit">
                 SAVE
               </button>
@@ -554,22 +617,74 @@ export default function PlaylistDetails() {
               autoFocus
             />
             <div
-              className="list-group list-group-flush mb-3 overflow-auto"
-              style={{ maxHeight: "300px" }}
+              className="list-group list-group-flush mb-3 overflow-auto custom-scrollbar"
+              style={{ maxHeight: "350px" }}
             >
+              {searchQuery.trim() === "" && suggestedSongs.length > 0 && (
+                <>
+                  <div className="px-3 py-2 text-warning small fw-bold text-uppercase border-bottom border-secondary border-opacity-10 mb-2">
+                    Suggested for this Playlist
+                  </div>
+                  {suggestedSongs.map((s) => (
+                    <button
+                      key={s.id}
+                      className="list-group-item list-group-item-action bg-dark text-white border-0 d-flex justify-content-between align-items-center py-2 mb-1 rounded-3"
+                      onClick={() => addSongToPlaylist(s.id)}
+                    >
+                      <div className="d-flex align-items-center gap-3">
+                        <div className="rounded overflow-hidden" style={{ width: 40, height: 40 }}>
+                          {s.cover_url ? (
+                            <img src={s.cover_url} className="w-100 h-100 object-fit-cover" alt="" />
+                          ) : (
+                            <div className="w-100 h-100 bg-secondary bg-opacity-25 d-flex align-items-center justify-content-center">
+                              <Music size={16} className="text-secondary" />
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="fw-bold small">{s.title}</div>
+                          <div className="text-secondary" style={{ fontSize: '0.75rem' }}>{s.artist}</div>
+                        </div>
+                      </div>
+                      <Plus size={16} className="text-warning" />
+                    </button>
+                  ))}
+                  <div className="px-3 py-3 text-secondary small text-center opacity-50">
+                    — OR SEARCH SONGS IN THE SEARCH BAR ABOVE —
+                  </div>
+                </>
+              )}
+
               {searchResults.map((s) => (
                 <button
                   key={s.id}
-                  className="list-group-item list-group-item-action bg-dark text-white border-secondary d-flex justify-content-between align-items-center py-3"
+                  className="list-group-item list-group-item-action bg-dark text-white border-secondary d-flex justify-content-between align-items-center py-2 mb-1 rounded-3"
                   onClick={() => addSongToPlaylist(s.id)}
                 >
-                  <div>
-                    <div className="fw-bold">{s.title}</div>
-                    <div className="small text-secondary">{s.artist}</div>
+                  <div className="d-flex align-items-center gap-3">
+                    <div className="rounded overflow-hidden" style={{ width: 40, height: 40 }}>
+                      {s.cover_url ? (
+                        <img src={s.cover_url} className="w-100 h-100 object-fit-cover" alt="" />
+                      ) : (
+                        <div className="w-100 h-100 bg-secondary bg-opacity-25 d-flex align-items-center justify-content-center">
+                          <Music size={16} className="text-secondary" />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <div className="fw-bold small">{s.title}</div>
+                      <div className="text-secondary" style={{ fontSize: '0.75rem' }}>{s.artist}</div>
+                    </div>
                   </div>
                   <Plus size={18} className="text-warning" />
                 </button>
               ))}
+              
+              {searchQuery.trim() !== "" && searchResults.length === 0 && (
+                <div className="p-4 text-center text-secondary small">
+                  No matches found for "{searchQuery}"
+                </div>
+              )}
             </div>
           </div>
         </div>

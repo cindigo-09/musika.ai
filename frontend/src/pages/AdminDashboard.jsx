@@ -13,7 +13,11 @@ import {
   ListMusic,
   Users,
   Search,
+  LayoutDashboard,
+  Database,
+  TrendingUp,
 } from "lucide-react";
+import logo from "../assets/logo-musikaAI.svg";
 
 // Chart.js Setup
 import {
@@ -102,42 +106,47 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch Songs
+      // 1. Fetch Songs
       const { data: songsData, error: songsErr } = await supabase
         .from("songs")
         .select("*");
       if (!songsErr) setSongs(songsData || []);
 
-      // Fetch Activity Log
+      // 2. Fetch Profiles (needed for mapping IDs to Usernames)
+      const { data: profilesData, error: profilesErr } = await supabase
+        .from("profiles")
+        .select("*");
+      const profilesMap = (profilesData || []).reduce((acc, p) => {
+        acc[p.id] = p.username || p.email || "Unknown User";
+        return acc;
+      }, {});
+      if (!profilesErr) setProfiles(profilesData || []);
+
+      // 3. Fetch Activity Log (Uploads, Deletions, Edits)
       const { data: logData, error: logErr } = await supabase
         .from("activity_log")
         .select("*")
         .order("performed_at", { ascending: false });
 
-      if (logErr) {
-        console.warn("Activity Log Fetch Error:", {
-          message: logErr.message,
-          code: logErr.code,
-          details: logErr.details,
-          hint: "Trying anonymous access as fallback...",
-        });
-        setActivityLogs([]);
-      } else {
-        console.log(`Activity logs loaded: ${(logData || []).length} records`);
-        setActivityLogs(logData || []);
-      }
+      // Map to include usernames
+      const activityEntries = (logData || []).map(log => ({
+        id: log.id,
+        action: log.action,
+        user: profilesMap[log.user_id] || "Unknown",
+        song_title: log.song_title || "Unknown Track",
+        time: log.performed_at
+      }));
 
-      // Fetch Listening History
+      setActivityLogs(activityEntries);
+
+      // 4. Fetch Listening History (Still needed for charts, but not for the Transaction table)
       const { data: historyData } = await supabase
         .from("listening_history")
-        .select("*");
+        .select("*")
+        .order("played_at", { ascending: false });
+      
       setListeningHistory(historyData || []);
 
-      // NEW: Fetch Profiles
-      const { data: profilesData, error: profilesErr } = await supabase
-        .from("profiles")
-        .select("*");
-      if (!profilesErr) setProfiles(profilesData || []);
     } catch (err) {
       console.error("Error fetching data:", err);
     } finally {
@@ -539,8 +548,8 @@ export default function AdminDashboard() {
       // Table headers
       doc.setFontSize(11);
       doc.setFont(undefined, "bold");
-      const colWidths = [30, 80, 60];
-      const headers = ["Action", "Song Title", "Date & Time"];
+      const colWidths = [40, 30, 70, 50];
+      const headers = ["User", "Action", "Song Title", "Date & Time"];
       let xPos = margin;
       headers.forEach((header, i) => {
         doc.text(header, xPos, yPosition);
@@ -562,18 +571,20 @@ export default function AdminDashboard() {
           yPosition = 15;
         }
 
+        const user = String(log.user || "N/A");
         const action = String(log.action || "").toUpperCase();
         const songTitle = log.song_title || "Unknown";
-        const dateTime = log.performed_at
-          ? new Date(log.performed_at).toLocaleString()
+        const dateTime = log.time
+          ? new Date(log.time).toLocaleString()
           : "N/A";
 
         xPos = margin;
-        doc.text(action.substring(0, 15), xPos, yPosition);
-        doc.text(songTitle.substring(0, 50), xPos + colWidths[0], yPosition);
+        doc.text(user.substring(0, 20), xPos, yPosition);
+        doc.text(action.substring(0, 15), xPos + colWidths[0], yPosition);
+        doc.text(songTitle.substring(0, 40), xPos + colWidths[0] + colWidths[1], yPosition);
         doc.text(
           dateTime.substring(0, 25),
-          xPos + colWidths[0] + colWidths[1],
+          xPos + colWidths[0] + colWidths[1] + colWidths[2],
           yPosition,
         );
         yPosition += 6;
@@ -591,460 +602,219 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="vh-100 vw-100 d-flex align-items-center justify-content-center bg-dark text-white">
-        <Loader2 className="animate-spin" size={48} color="#7C3AED" />
+      <div className="vh-100 vw-100 d-flex align-items-center justify-content-center" style={{ background: '#050508' }}>
+        <div className="text-center">
+          <Loader2 className="animate-spin mb-3 text-warning" size={48} />
+          <div className="text-secondary small fw-bold text-uppercase" style={{ letterSpacing: '2px' }}>Loading Console...</div>
+        </div>
       </div>
     );
   }
 
   return (
     <div
-      className="d-flex flex-column vh-100 vw-100 text-white"
-      style={{ background: "#0D0D14" }}
+      className="vh-100 vw-100 d-flex flex-column text-white"
+      style={{ background: "#050508", overflow: "hidden" }}
     >
-      <div className="d-flex flex-grow-1 overflow-hidden">
-        <main className="flex-grow-1 p-4 p-md-5 overflow-auto custom-scrollbar">
-          {/* Header Row */}
-          <div className="d-flex justify-content-between align-items-center mb-5">
-            <div>
-              <h2 className="fw-bold mb-1" style={{ color: "#F59E0B" }}>
-                Admin Reports & Analytics
-              </h2>
-              <p className="text-secondary m-0">
-                Platform summary, user insights, and visualization
-              </p>
-            </div>
-            <button
-              className="btn btn-outline-danger d-flex align-items-center gap-2"
-              onClick={handleLogout}
-            >
-              <LogOut size={16} /> Logout
-            </button>
+      {/* Premium Admin Header */}
+      <header 
+        className="d-flex justify-content-between align-items-center px-4 py-3 border-bottom border-secondary border-opacity-25"
+        style={{ background: "rgba(13, 13, 20, 0.8)", backdropFilter: "blur(10px)", zIndex: 1000 }}
+      >
+        <div className="d-flex align-items-center gap-3">
+          <img src={logo} alt="Logo" height="45" className="logo-coin-spin" />
+          <div>
+            <h4 className="m-0 fw-bold text-warning" style={{ letterSpacing: '2px' }}>MUSIKA.AI</h4>
+            <span className="text-secondary small fw-bold" style={{ fontSize: '0.65rem', textTransform: 'uppercase' }}>Management Console</span>
+          </div>
+        </div>
+        
+        <div className="d-flex align-items-center gap-4">
+          <div className="d-flex flex-column text-end d-none d-md-block">
+            <span className="text-white small fw-bold">Admin Portal</span>
+            <span className="text-secondary" style={{ fontSize: '0.75rem' }}></span>
+          </div>
+          <button
+            className="btn btn-outline-danger btn-sm px-3 rounded-pill d-flex align-items-center gap-2"
+            onClick={handleLogout}
+          >
+            <LogOut size={14} /> <span className="small fw-bold">SIGN OUT</span>
+          </button>
+        </div>
+      </header>
+
+      <main className="flex-grow-1 overflow-auto custom-scrollbar p-4 p-md-5">
+        <div className="container-fluid max-width-1400">
+          {/* Welcome Header */}
+          <div className="mb-5">
+            <h2 className="display-6 fw-bold mb-1">
+              Dashboard <span className="text-warning">Overview</span>
+            </h2>
+            <p className="text-secondary">Comprehensive analytics and platform management.</p>
           </div>
 
-          {/* Summary Cards */}
+          {/* Metrics Grid */}
           <div className="row g-4 mb-5">
-            <div className="col-md-3">
-              <div
-                className="p-4 rounded shadow-sm d-flex align-items-center gap-3"
-                style={{
-                  background: "#1a1a24",
-                  borderLeft: "4px solid #7C3AED",
-                }}
-              >
-                <div
-                  className="p-3 rounded-circle"
-                  style={{ background: "rgba(124, 58, 237, 0.2)" }}
-                >
-                  <Music2 size={24} color="#7C3AED" />
-                </div>
-                <div>
-                  <h3 className="m-0 fw-bold">{totalTracks}</h3>
-                  <span className="text-secondary small text-uppercase fw-bold">
-                    Total Tracks
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="col-md-3">
-              <div
-                className="p-4 rounded shadow-sm d-flex align-items-center gap-3"
-                style={{
-                  background: "#1a1a24",
-                  borderLeft: "4px solid #0EA5E9",
-                }}
-              >
-                <div
-                  className="p-3 rounded-circle"
-                  style={{ background: "rgba(14, 165, 233, 0.2)" }}
-                >
-                  <BarChart3 size={24} color="#0EA5E9" />
-                </div>
-                <div>
-                  <h3 className="m-0 fw-bold">{mostPlayedGenre}</h3>
-                  <span className="text-secondary small text-uppercase fw-bold">
-                    Top Genre
-                  </span>
+            {[
+              { label: "Total Tracks", value: totalTracks, icon: Music2, color: "#7C3AED", sub: "Global Library" },
+              { label: "Top Genre", value: mostPlayedGenre, icon: TrendingUp, color: "#0EA5E9", sub: "Most Streamed" },
+              { label: "Total Users", value: userSummary.totalUsers, icon: Users, color: "#F59E0B", sub: "Community Size" },
+              { label: "Storage Use", value: `${estimatedStorageMB} MB`, icon: Database, color: "#EC4899", sub: "System Capacity" },
+            ].map((m, i) => (
+              <div className="col-md-3" key={i}>
+                <div className="musika-card h-100 p-4 d-flex align-items-center gap-3" style={{ background: "rgba(20, 20, 30, 0.4)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                  <div className="p-3 rounded-4" style={{ background: `${m.color}15`, border: `1px solid ${m.color}30` }}>
+                    <m.icon size={24} style={{ color: m.color }} />
+                  </div>
+                  <div className="overflow-hidden">
+                    <h3 
+                      className="m-0 fw-bold text-truncate" 
+                      title={m.value}
+                      style={{ maxWidth: '100%' }}
+                    >
+                      {m.value}
+                    </h3>
+                    <div className="text-secondary small fw-bold text-uppercase" style={{ fontSize: '0.65rem' }}>{m.label}</div>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            <div className="col-md-3">
-              <div
-                className="p-4 rounded shadow-sm d-flex align-items-center gap-3"
-                style={{
-                  background: "#1a1a24",
-                  borderLeft: "4px solid #F59E0B",
-                }}
-              >
-                <div
-                  className="p-3 rounded-circle"
-                  style={{ background: "rgba(245, 158, 11, 0.2)" }}
-                >
-                  <HardDrive size={24} color="#F59E0B" />
-                </div>
-                <div>
-                  <h3 className="m-0 fw-bold">{estimatedStorageMB} MB</h3>
-                  <span className="text-secondary small text-uppercase fw-bold">
-                    Storage Used
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="col-md-3">
-              <div
-                className="p-4 rounded shadow-sm d-flex align-items-center gap-3"
-                style={{
-                  background: "#1a1a24",
-                  borderLeft: "4px solid #EC4899",
-                }}
-              >
-                <div
-                  className="p-3 rounded-circle"
-                  style={{ background: "rgba(236, 72, 153, 0.2)" }}
-                >
-                  <ListMusic size={24} color="#EC4899" />
-                </div>
-                <div>
-                  <h3 className="m-0 fw-bold">{uniqueGenresCount}</h3>
-                  <span className="text-secondary small text-uppercase fw-bold">
-                    Available Genres
-                  </span>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
 
-          {/* NEW: User Insights & Analytics Summary + Exports */}
+          {/* Charts Section */}
           <div className="row g-4 mb-5">
-            <div className="col-md-3">
-              <div
-                className="p-4 rounded shadow-sm d-flex align-items-center gap-3"
-                style={{
-                  background: "#1a1a24",
-                  borderLeft: "4px solid #7C3AED",
-                }}
-              >
-                <div
-                  className="p-3 rounded-circle"
-                  style={{ background: "rgba(124, 58, 237, 0.2)" }}
-                >
-                  <Users size={24} color="#7C3AED" />
+            <div className="col-lg-8">
+              <div className="musika-card p-4" style={{ background: "rgba(20, 20, 30, 0.4)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                  <h5 className="m-0 fw-bold">Platform Growth</h5>
+                  <div className="text-secondary small">New Signups per Month</div>
                 </div>
-                <div>
-                  <h3 className="m-0 fw-bold">{userSummary.totalUsers}</h3>
-                  <span className="text-secondary small text-uppercase fw-bold">
-                    Total Users
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="col-md-3">
-              <div
-                className="p-4 rounded shadow-sm d-flex align-items-center gap-3"
-                style={{
-                  background: "#1a1a24",
-                  borderLeft: "4px solid #0EA5E9",
-                }}
-              >
-                <div
-                  className="p-3 rounded-circle"
-                  style={{ background: "rgba(14, 165, 233, 0.2)" }}
-                >
-                  <BarChart3 size={24} color="#0EA5E9" />
-                </div>
-                <div>
-                  <h3 className="m-0 fw-bold">
-                    {userSummary.avgAge === null
-                      ? "N/A"
-                      : userSummary.avgAge.toFixed(1)}
-                  </h3>
-                  <span className="text-secondary small text-uppercase fw-bold">
-                    Average Age
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="col-md-3">
-              <div
-                className="p-4 rounded shadow-sm"
-                style={{
-                  background: "#1a1a24",
-                  borderLeft: "4px solid #F59E0B",
-                }}
-              >
-                <h6 className="text-secondary text-uppercase fw-bold mb-3">
-                  Export Profiles (CSV)
-                </h6>
-                <button
-                  className="btn btn-outline-warning w-100 d-flex align-items-center justify-content-center gap-2"
-                  onClick={exportProfilesCSV}
-                >
-                  <Download size={16} /> Download CSV
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* NEW: Charts for user analytics */}
-          <div className="row g-4 mb-5">
-            <div className="col-lg-4">
-              <div
-                className="p-4 rounded shadow-sm h-100"
-                style={{ background: "#1a1a24" }}
-              >
-                <h5 className="mb-4 text-white">
-                  Growth Chart: New Signups / Month
-                </h5>
-                <div style={{ height: 280 }}>
+                <div style={{ height: 320 }}>
                   <Bar data={monthlyGrowthBarData} options={chartOptions} />
                 </div>
               </div>
             </div>
-
             <div className="col-lg-4">
-              <div
-                className="p-4 rounded shadow-sm h-100"
-                style={{ background: "#1a1a24" }}
-              >
-                <h5 className="mb-4 text-white">Age Distribution</h5>
-                <div style={{ height: 280 }}>
+              <div className="musika-card p-4 h-100" style={{ background: "rgba(20, 20, 30, 0.4)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <h5 className="mb-4 fw-bold">User Demographics</h5>
+                <div style={{ height: 320 }}>
                   <Bar data={ageDistributionData} options={chartOptions} />
                 </div>
               </div>
             </div>
+          </div>
 
-            <div className="col-lg-4">
-              <div
-                className="p-4 rounded shadow-sm h-100"
-                style={{ background: "#1a1a24" }}
-              >
-                <h5 className="mb-4 text-white">
-                  Preference Pie: Top Favorite Genres
-                </h5>
-                <div style={{ width: "100%", height: 280, margin: "0 auto" }}>
-                  <Doughnut data={preferencePieData} options={pieOptions} />
+          {/* User Management Section */}
+          <div className="musika-card mb-5" style={{ background: "rgba(20, 20, 30, 0.4)", border: "1px solid rgba(255,255,255,0.05)" }}>
+            <div className="p-4 border-bottom border-secondary border-opacity-10 d-flex justify-content-between align-items-center gap-3 flex-wrap">
+              <h5 className="m-0 fw-bold d-flex align-items-center gap-2">
+                <Users size={20} className="text-warning" /> User Insights
+              </h5>
+              <div className="d-flex gap-3">
+                <div className="position-relative">
+                  <Search size={16} className="text-secondary position-absolute" style={{ left: 12, top: 12 }} />
+                  <input
+                    className="form-control ps-5 rounded-pill border-secondary border-opacity-25"
+                    style={{ width: 300, background: "rgba(0,0,0,0.2)", color: "#fff" }}
+                    placeholder="Search users..."
+                    value={profileSearch}
+                    onChange={(e) => setProfileSearch(e.target.value)}
+                  />
                 </div>
+                <button className="btn btn-warning btn-sm px-4 rounded-pill fw-bold" onClick={exportProfilesCSV}>
+                  <Download size={14} className="me-2" /> EXPORT CSV
+                </button>
               </div>
+            </div>
+            <div className="table-responsive" style={{ maxHeight: 400 }}>
+              <table className="table table-dark table-hover mb-0">
+                <thead className="small text-uppercase text-secondary">
+                  <tr>
+                    <th className="ps-4 border-0">Username</th>
+                    <th className="border-0">Email</th>
+                    <th className="border-0">Age</th>
+                    <th className="border-0">Favorite Genre</th>
+                    <th className="text-end pe-4 border-0">Last Active</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredProfiles.slice(0, 50).map(p => (
+                    <tr key={p.id} className="align-middle">
+                      <td className="ps-4 fw-bold text-white py-3 text-truncate" style={{ maxWidth: '150px' }} title={p.username || "N/A"}>
+                        {p.username || "N/A"}
+                      </td>
+                      <td className="text-secondary text-truncate" style={{ maxWidth: '200px' }} title={p.email}>
+                        {p.email}
+                      </td>
+                      <td className="text-secondary">{p.age || "N/A"}</td>
+                      <td>
+                        <span className="badge bg-secondary bg-opacity-25 text-white fw-normal rounded-pill px-3 py-2">
+                          {p.favorite_genre || "None"}
+                        </span>
+                      </td>
+                      <td className="text-end pe-4 text-secondary small">
+                        {p.updated_at ? new Date(p.updated_at).toLocaleDateString() : 'N/A'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
 
-          {/* NEW: Searchable Profiles Table */}
-          <div className="row g-4 mb-5">
-            <div className="col-12">
-              <div
-                className="p-4 rounded shadow-sm"
-                style={{ background: "#1a1a24" }}
-              >
-                <div className="d-flex justify-content-between align-items-center mb-4 gap-3 flex-wrap">
-                  <h5 className="m-0 text-white">User Insights & Analytics</h5>
-                  <div className="position-relative">
-                    <Search
-                      size={16}
-                      color="#9ca3af"
-                      style={{ position: "absolute", left: 12, top: 10 }}
-                    />
-                    <input
-                      className="form-control"
-                      style={{
-                        width: 320,
-                        paddingLeft: 36,
-                        background: "#2a2a36",
-                        color: "#fff",
-                        borderColor: "#374151",
-                      }}
-                      placeholder="Search username or email..."
-                      value={profileSearch}
-                      onChange={(e) => setProfileSearch(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="text-secondary mb-3">
-                  Showing <b>{filteredProfiles.length}</b> users (recently
-                  updated first).
-                </div>
-
-                <div className="table-responsive" style={{ maxHeight: 420 }}>
-                  <table className="table table-dark table-hover border-secondary">
-                    <thead
-                      style={{
-                        position: "sticky",
-                        top: 0,
-                        zIndex: 1,
-                        background: "#1a1a24",
-                      }}
-                    >
-                      <tr className="text-secondary small text-uppercase">
-                        <th>Username</th>
-                        <th>Email</th>
-                        <th>Age</th>
-                        <th>Favorite Genre(s)</th>
-                        <th className="text-end">Updated</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredProfiles.length > 0 ? (
-                        filteredProfiles.slice(0, 200).map((p) => (
-                          <tr key={p.id} className="align-middle">
-                            <td className="text-white fw-bold">
-                              {p.username || "N/A"}
-                            </td>
-                            <td className="text-secondary">
-                              {p.email || "N/A"}
-                            </td>
-                            <td className="text-secondary">
-                              {p.age === null || p.age === undefined
-                                ? "N/A"
-                                : p.age}
-                            </td>
-                            <td className="text-secondary">
-                              {p.favorite_genre || "N/A"}
-                            </td>
-                            <td className="text-end text-secondary">
-                              {p.updated_at
-                                ? new Date(p.updated_at).toLocaleString()
-                                : p.created_at
-                                  ? new Date(p.created_at).toLocaleString()
-                                  : "N/A"}
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td
-                            colSpan="5"
-                            className="text-center py-4 text-secondary"
-                          >
-                            No profiles matched your search.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="mt-3 text-secondary small">
-                  Note: The table is capped at the first 200 results for
-                  performance.
-                </div>
+          {/* Transaction History Section */}
+          <div className="musika-card mb-5" style={{ background: "rgba(20, 20, 30, 0.4)", border: "1px solid rgba(255,255,255,0.05)" }}>
+            <div className="p-4 border-bottom border-secondary border-opacity-10 d-flex justify-content-between align-items-center">
+              <h5 className="m-0 fw-bold d-flex align-items-center gap-2">
+                <ListMusic size={20} className="text-warning" /> Transaction History
+              </h5>
+              <div className="d-flex gap-2">
+                <button className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={exportSongsCSV}>
+                  <Download size={14} className="me-2" /> Songs CSV
+                </button>
+                <button className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={exportActivityPDF}>
+                  <Download size={14} className="me-2" /> Activity PDF
+                </button>
               </div>
             </div>
-          </div>
-
-          {/* Existing Charts Row */}
-          <div className="row g-4 mb-5">
-            <div className="col-lg-8">
-              <div
-                className="p-4 rounded shadow-sm h-100"
-                style={{ background: "#1a1a24" }}
-              >
-                <h5 className="mb-4 text-white">Uploads Per Month</h5>
-                <div style={{ height: 300 }}>
-                  <Bar data={processMonthlyUploads()} options={chartOptions} />
-                </div>
-              </div>
+            <div className="table-responsive" style={{ maxHeight: 450 }}>
+              <table className="table table-dark table-hover mb-0">
+                <thead className="small text-uppercase text-secondary">
+                  <tr>
+                    <th className="ps-4 border-0">User</th>
+                    <th className="border-0">Action</th>
+                    <th className="border-0">Target Song</th>
+                    <th className="text-end pe-4 border-0">Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activityLogs.map(log => (
+                    <tr key={log.id} className="align-middle">
+                      <td className="ps-4 text-secondary py-3 text-truncate" style={{ maxWidth: '120px' }} title={log.user}>
+                        {log.user}
+                      </td>
+                      <td>
+                        <span className={`badge rounded-pill px-3 py-2 ${
+                          log.action === 'upload' ? 'bg-info text-dark' : 
+                          log.action === 'edit' ? 'bg-warning text-dark' : 'bg-danger'
+                        }`}>
+                          {log.action.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="text-white fw-bold text-truncate" style={{ maxWidth: '250px' }} title={log.song_title}>
+                        {log.song_title}
+                      </td>
+                      <td className="text-end pe-4 text-secondary small">
+                        {new Date(log.time).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-
-          {/* Existing Activity Log */}
-          <div className="row g-4">
-            <div className="col-12">
-              <div
-                className="p-4 rounded shadow-sm"
-                style={{ background: "#1a1a24" }}
-              >
-                <div className="d-flex justify-content-between align-items-center mb-4">
-                  <h5 className="m-0 text-white">Transaction History</h5>
-                  <div className="d-flex gap-2">
-                    <button
-                      className="btn btn-sm text-white border-secondary d-flex align-items-center gap-2"
-                      style={{
-                        background: "#2a2a36",
-                        opacity: songs.length ? 1 : 0.6,
-                      }}
-                      onClick={exportSongsCSV}
-                      disabled={songs.length === 0}
-                    >
-                      <Download size={14} /> Export Songs CSV
-                    </button>
-                    <button
-                      className="btn btn-sm text-white border-secondary d-flex align-items-center gap-2"
-                      style={{
-                        background: "#2a2a36",
-                        opacity: activityLogs.length ? 1 : 0.6,
-                      }}
-                      onClick={exportActivityPDF}
-                      disabled={activityLogs.length === 0}
-                    >
-                      <Download size={14} /> Export Log PDF
-                    </button>
-                  </div>
-                </div>
-
-                <div className="table-responsive" style={{ maxHeight: 400 }}>
-                  <table className="table table-dark table-hover border-secondary">
-                    <thead
-                      style={{
-                        position: "sticky",
-                        top: 0,
-                        zIndex: 1,
-                        background: "#1a1a24",
-                      }}
-                    >
-                      <tr className="text-secondary small text-uppercase">
-                        <th>Action</th>
-                        <th>Song Title</th>
-                        <th className="text-end">Date & Time</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {activityLogs.length > 0 ? (
-                        activityLogs.map((log) => (
-                          <tr key={log.id} className="align-middle">
-                            <td>
-                              <span
-                                className={`badge ${
-                                  log.action === "upload"
-                                    ? "bg-info text-dark"
-                                    : "bg-danger"
-                                } px-3 py-2 rounded-pill`}
-                              >
-                                {String(log.action || "").toUpperCase()}
-                              </span>
-                            </td>
-                            <td className="text-white fw-bold">
-                              {log.song_title || "Unknown"}
-                            </td>
-                            <td className="text-secondary text-end">
-                              {log.performed_at
-                                ? new Date(log.performed_at).toLocaleString()
-                                : "N/A"}
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td
-                            colSpan="3"
-                            className="text-center py-4 text-secondary"
-                          >
-                            No activity logs found.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

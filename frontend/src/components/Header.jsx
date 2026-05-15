@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { LogOut } from "lucide-react";
+import { LogOut, User } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
-import { useMusic } from "../context/MusicContext"; // Import this
-import { User } from "lucide-react";
+import { useMusic } from "../context/MusicContext";
+import NotificationDropdown from "./NotificationDropdown";
+
+import logo from "../assets/logo-musikaAI.svg";
 
 function Header() {
   const navigate = useNavigate();
-  const { closePlayer } = useMusic(); // Use the hook
+  const { closePlayer } = useMusic();
   const [currentUser, setCurrentUser] = useState("Guest");
   const [profile, setProfile] = useState({ avatar_url: "" });
 
@@ -24,14 +26,11 @@ function Header() {
   }, []);
 
   useEffect(() => {
-    let user_id = null;
-
     const getProfile = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (user) {
-        user_id = user.id;
         const { data } = await supabase
           .from("profiles")
           .select("avatar_url")
@@ -39,7 +38,6 @@ function Header() {
           .single();
         if (data) setProfile(data);
 
-        // --- START REALTIME SUBSCRIPTION ---
         const profileSubscription = supabase
           .channel("header-profile-sync")
           .on(
@@ -51,7 +49,6 @@ function Header() {
               filter: `id=eq.${user.id}`,
             },
             (payload) => {
-              // Update the header state with the new avatar_url immediately
               setProfile({ avatar_url: payload.new.avatar_url });
             },
           )
@@ -67,31 +64,42 @@ function Header() {
   }, []);
 
   const handleLogout = async () => {
-  try {
-    // Stop music before logging out
-    if (closePlayer) closePlayer();
-
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error("Error logging out:", error.message);
-      alert("Logout failed. Please try again.");
-    } else {
-      // Clear any local state if necessary and redirect
-      navigate("/login");
+    try {
+      if (closePlayer) closePlayer();
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("Error logging out:", error.message);
+        alert("Logout failed. Please try again.");
+      } else {
+        navigate("/login");
+      }
+    } catch (err) {
+      console.error("Logout exception:", err);
+      alert("An error occurred during logout.");
     }
-  } catch (err) {
-    console.error("Logout exception:", err);
-    alert("An error occurred during logout.");
-  }
-};
+  };
 
   return (
     <header
       className="d-flex justify-content-between align-items-center p-3 border-bottom border-secondary bg-dark bg-opacity-25"
-      style={{ height: "70px" }}
+      style={{ height: "90px", zIndex: 1000 }}
     >
-      <h4 className="page-title m-0">MUSIKA.AI</h4>
+      <div 
+        className="d-flex align-items-center gap-3 cursor-pointer" 
+        onClick={() => navigate('/home')}
+      >
+        <img 
+          src={logo} 
+          alt="Musika AI" 
+          height="60" 
+          className="logo-coin-spin"
+        />
+        <h4 className="page-title m-0 fw-bold text-warning" style={{ letterSpacing: '2px', fontSize: '1.8rem' }}>MUSIKA.AI</h4>
+      </div>
+
       <div className="d-flex align-items-center gap-3">
+        <NotificationDropdown />
+
         <div className="d-flex align-items-center gap-2">
           <div
             className="rounded-circle overflow-hidden border border-secondary"
@@ -109,14 +117,14 @@ function Header() {
           </div>
         </div>
         <div className="text-end d-none d-sm-block">
-          <div className="small text-white-50 text-uppercase">User</div>
-          <div className="fw-bold text-warning">
+          <div className="small text-white-50 text-uppercase" style={{ fontSize: '0.65rem' }}>User</div>
+          <div className="fw-bold text-warning small">
             {currentUser || "Loading..."}
           </div>
         </div>
         <button
           onClick={handleLogout}
-          className="btn btn-outline-danger btn-sm"
+          className="btn btn-outline-danger btn-sm rounded-pill"
         >
           <LogOut size={16} />
         </button>

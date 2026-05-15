@@ -21,6 +21,7 @@ export const MusicProvider = ({ children }) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [repeatMode, setRepeatMode] = useState("none");
+  const [favoriteSongIds, setFavoriteSongIds] = useState(new Set());
 
   // 2. SETTINGS & VOLUME INITIALIZATION
   // Must be defined before the Effects that watch them
@@ -50,6 +51,85 @@ export const MusicProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem("musika-settings", JSON.stringify(settings));
   }, [settings]);
+
+  useEffect(() => {
+    fetchFavorites();
+  }, []);
+
+  const fetchFavorites = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data: favPlaylist } = await supabase
+        .from("playlists")
+        .select("id")
+        .eq("user_id", session.user.id)
+        .eq("name", "Favorites")
+        .single();
+
+      if (favPlaylist) {
+        const { data: favSongs } = await supabase
+          .from("playlist_songs")
+          .select("song_id")
+          .eq("playlist_id", favPlaylist.id);
+        if (favSongs) {
+          setFavoriteSongIds(new Set(favSongs.map(s => s.song_id)));
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching favorites:", err);
+    }
+  };
+
+  const toggleFavorite = async (songId) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return triggerToast("Please login to favorite songs", "error");
+
+      let { data: favPlaylist } = await supabase
+        .from("playlists")
+        .select("id")
+        .eq("user_id", session.user.id)
+        .eq("name", "Favorites")
+        .single();
+
+      if (!favPlaylist) {
+        const { data: newFav, error: createError } = await supabase
+          .from("playlists")
+          .insert([{ user_id: session.user.id, name: "Favorites", is_public: false }])
+          .select()
+          .single();
+        if (createError) throw createError;
+        favPlaylist = newFav;
+      }
+
+      if (favoriteSongIds.has(songId)) {
+        await supabase
+          .from("playlist_songs")
+          .delete()
+          .eq("playlist_id", favPlaylist.id)
+          .eq("song_id", songId);
+        
+        setFavoriteSongIds(prev => {
+          const next = new Set(prev);
+          next.delete(songId);
+          return next;
+        });
+        triggerToast("Removed from Favorites");
+      } else {
+        await supabase
+          .from("playlist_songs")
+          .insert([{ playlist_id: favPlaylist.id, song_id: songId, order_index: 0 }]);
+        
+        setFavoriteSongIds(prev => new Set(prev).add(songId));
+        triggerToast("Added to Favorites");
+      }
+    } catch (err) {
+      console.error("Toggle favorite error:", err);
+      triggerToast("Error updating favorites", "error");
+    }
+  };
 
   useEffect(() => {
     if (audioRef.current) {
@@ -174,6 +254,13 @@ export const MusicProvider = ({ children }) => {
     };
   }, [playNext]);
 
+  const [toast, setToast] = useState({ message: "", type: "success", show: false });
+
+  const triggerToast = (message, type = "success") => {
+    setToast({ message, type, show: true });
+    setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
+  };
+
   // 7. CONTEXT PROVIDER RENDER
   return (
     <MusicContext.Provider
@@ -196,6 +283,11 @@ export const MusicProvider = ({ children }) => {
         audioRef,
         settings,
         setSettings,
+        toast,
+        triggerToast,
+        favoriteSongIds,
+        toggleFavorite,
+        refreshFavorites: fetchFavorites,
       }}
     >
       {children}
