@@ -52,8 +52,24 @@ export const MusicProvider = ({ children }) => {
     localStorage.setItem("musika-settings", JSON.stringify(settings));
   }, [settings]);
 
+  // Listen for auth changes so favorites are always scoped to the current user.
+  // SIGNED_IN / TOKEN_REFRESHED → fetch that user's favorites
+  // SIGNED_OUT               → clear the set so no stale hearts remain
   useEffect(() => {
+    // Initial load
     fetchFavorites();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+          fetchFavorites();
+        } else if (event === "SIGNED_OUT") {
+          setFavoriteSongIds(new Set());
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const fetchFavorites = async () => {
