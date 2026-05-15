@@ -22,7 +22,6 @@ function ProfileSection() {
     bio: "",
     avatar_url: "",
     is_public: true,
-    show_history: true,
   });
   const [loading, setLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -52,7 +51,7 @@ function ProfileSection() {
 
       const { data } = await supabase
         .from("profiles")
-        .select("username, bio, avatar_url, is_public, show_history")
+        .select("username, bio, avatar_url, is_public")
         .eq("id", user.id)
         .single();
 
@@ -62,7 +61,6 @@ function ProfileSection() {
           bio: data.bio || "",
           avatar_url: data.avatar_url || "",
           is_public: data.is_public ?? true,
-          show_history: data.show_history ?? true,
         });
 
         // Fetch Follow Counts
@@ -139,7 +137,6 @@ function ProfileSection() {
           username: profile.username,
           bio: profile.bio,
           is_public: profile.is_public,
-          show_history: profile.show_history,
         })
         .eq("id", userId);
       triggerToast("Profile changes saved!");
@@ -299,20 +296,7 @@ function ProfileSection() {
             </div>
           </div>
 
-          <div className="d-flex justify-content-between align-items-center mb-3 p-3 rounded-3 bg-dark bg-opacity-25 border border-secondary border-opacity-10">
-            <div>
-              <div className="fw-bold text-white small">Show Listening History</div>
-              <p className="text-secondary x-small mb-0">Make your activity visible on your public profile</p>
-            </div>
-            <div className="form-check form-switch">
-              <input 
-                className="form-check-input custom-switch" 
-                type="checkbox" 
-                checked={profile.show_history}
-                onChange={(e) => setProfile({ ...profile, show_history: e.target.checked })}
-              />
-            </div>
-          </div>
+
         </div>
 
         <button

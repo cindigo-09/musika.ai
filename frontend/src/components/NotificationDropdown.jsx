@@ -126,7 +126,7 @@ export default function NotificationDropdown() {
                     style={{ cursor: 'pointer' }}
                   >
                     <div className="flex-shrink-0 mt-1">
-                      {notif.type === 'new_upload' ? <Music size={18} className="text-info" /> : 
+                      {notif.type === 'new_track' || notif.type === 'new_upload' ? <Music size={18} className="text-info" /> : 
                        notif.type === 'new_follower' ? <User size={18} className="text-warning" /> : 
                        <Clock size={18} className="text-secondary" />}
                     </div>

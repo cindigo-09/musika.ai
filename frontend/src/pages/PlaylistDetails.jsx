@@ -50,6 +50,7 @@ export default function PlaylistDetails() {
   const [playlistSongs, setPlaylistSongs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
 
   const [isEditingPlaylist, setIsEditingPlaylist] = useState(false);
   const [playlistEditForm, setPlaylistEditForm] = useState({
@@ -66,9 +67,15 @@ export default function PlaylistDetails() {
   const [suggestedSongs, setSuggestedSongs] = useState([]);
 
   const isFavoritesPlaylist = playlist?.name === "Favorites";
+  const isOwner = playlist?.user_id === currentUserId;
 
   useEffect(() => {
-    fetchPlaylistData();
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) setCurrentUserId(session.user.id);
+      fetchPlaylistData();
+    };
+    init();
   }, [id]);
 
   useEffect(() => {
@@ -285,12 +292,22 @@ export default function PlaylistDetails() {
       <div className="d-flex flex-grow-1 overflow-hidden">
         <Sidebar />
         <main className="flex-grow-1 p-5 overflow-auto custom-scrollbar">
-          <button
-            className="btn btn-link text-secondary p-0 mb-4 d-flex align-items-center gap-2 text-decoration-none"
-            onClick={() => navigate("/playlists")}
-          >
-            <ArrowLeft size={20} /> BACK TO PLAYLISTS
-          </button>
+          <div className="d-flex align-items-center gap-3 mb-4 flex-wrap">
+            <button
+              className="btn btn-link text-secondary p-0 d-flex align-items-center gap-2 text-decoration-none"
+              onClick={() => navigate("/playlists")}
+            >
+              <ArrowLeft size={20} /> BACK TO PLAYLISTS
+            </button>
+            {!isOwner && playlist?.user_id && (
+              <button
+                className="btn btn-link text-warning p-0 d-flex align-items-center gap-2 text-decoration-none"
+                onClick={() => navigate(`/user/${playlist.user_id}`)}
+              >
+                <ArrowLeft size={20} /> BACK TO PROFILE
+              </button>
+            )}
+          </div>
 
           <div className="d-flex flex-column flex-md-row gap-5 align-items-md-end mb-5">
             <div
@@ -308,25 +325,27 @@ export default function PlaylistDetails() {
               ) : (
                 <Music size={80} className="text-secondary opacity-50" />
               )}
-              <div className="upload-overlay position-absolute top-0 start-0 w-100 h-100 bg-black bg-opacity-60 d-flex flex-column align-items-center justify-content-center opacity-0">
-                <label>
-                  {isUploading ? (
-                    <Loader2 className="animate-spin text-warning" />
-                  ) : (
-                    <Camera size={32} className="text-white" />
-                  )}
-                  <span className="small mt-2 fw-bold text-white">
-                    CHANGE PHOTO
-                  </span>
-                  <input
-                    type="file"
-                    className="d-none"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    disabled={isUploading}
-                  />
-                </label>
-              </div>
+              {isOwner && (
+                <div className="upload-overlay position-absolute top-0 start-0 w-100 h-100 bg-black bg-opacity-60 d-flex flex-column align-items-center justify-content-center opacity-0">
+                  <label>
+                    {isUploading ? (
+                      <Loader2 className="animate-spin text-warning" />
+                    ) : (
+                      <Camera size={32} className="text-white" />
+                    )}
+                    <span className="small mt-2 fw-bold text-white">
+                      CHANGE PHOTO
+                    </span>
+                    <input
+                      type="file"
+                      className="d-none"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      disabled={isUploading}
+                    />
+                  </label>
+                </div>
+              )}
             </div>
 
             <div className="flex-grow-1">
@@ -335,7 +354,7 @@ export default function PlaylistDetails() {
               </p>
               <div className="d-flex align-items-center gap-3">
                 <h1 className="display-2 fw-bold mb-2">{playlist?.name}</h1>
-                {!isFavoritesPlaylist && (
+                {!isFavoritesPlaylist && isOwner && (
                   <Edit2
                     size={24}
                     className="text-secondary cursor-pointer"
@@ -371,7 +390,7 @@ export default function PlaylistDetails() {
                   )}
                 </button>
 
-                {!isFavoritesPlaylist && (
+                {!isFavoritesPlaylist && isOwner && (
                   <button
                     className="btn btn-outline-warning fw-bold px-4 rounded-pill"
                     onClick={() => setShowAddModal(true)}
@@ -379,7 +398,7 @@ export default function PlaylistDetails() {
                     <Plus size={18} /> ADD SONG
                   </button>
                 )}
-                {isFavoritesPlaylist && playlistSongs.length > 0 && (
+                {isFavoritesPlaylist && isOwner && playlistSongs.length > 0 && (
                   <button
                     className="btn btn-outline-danger fw-bold px-4 rounded-pill"
                     onClick={() => setShowClearFavoritesConfirm(true)}
@@ -387,7 +406,7 @@ export default function PlaylistDetails() {
                     <Trash2 size={18} /> CLEAR ALL
                   </button>
                 )}
-                {!isFavoritesPlaylist && (
+                {!isFavoritesPlaylist && isOwner && (
                   <button
                     className="btn btn-outline-danger fw-bold px-4 rounded-pill"
                     onClick={() => setShowDeleteConfirm(true)}
@@ -459,7 +478,7 @@ export default function PlaylistDetails() {
                           }
                         />
                       </button>
-                      {!isFavoritesPlaylist && (
+                      {!isFavoritesPlaylist && isOwner && (
                         <button
                           className="btn btn-link p-0 text-secondary"
                           title="Remove from Playlist"

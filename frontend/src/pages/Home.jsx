@@ -343,6 +343,23 @@ export default function Home() {
         },
       ]);
 
+      // Notify all followers about the new track
+      const { data: followers } = await supabase
+        .from("follows")
+        .select("follower_id")
+        .eq("following_id", session.user.id);
+
+      if (followers && followers.length > 0) {
+        const notifications = followers.map((f) => ({
+          user_id: f.follower_id,
+          actor_id: session.user.id,
+          type: "new_track",
+          track_id: songData.id,
+          content: `${form.artist || "Someone you follow"} uploaded a new track: "${form.title}"`,
+        }));
+        await supabase.from("notifications").insert(notifications);
+      }
+
       triggerToast(`"${form.title}" uploaded!`);
       fetchSongs();
       setShowModal(false);

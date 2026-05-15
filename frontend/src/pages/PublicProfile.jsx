@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-import { User, Play, UserPlus, UserMinus, Music, FolderKanban, ArrowLeft } from "lucide-react";
+import { User, Play, UserPlus, UserMinus, Music, FolderKanban, ArrowLeft, Heart, X } from "lucide-react";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import { useMusic } from "../context/MusicContext";
@@ -10,9 +10,11 @@ export default function PublicProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { 
+    currentSong,
     playSong,
     favoriteSongIds,
     toggleFavorite,
+    triggerToast,
   } = useMusic();
 
   const [profile, setProfile] = useState(null);
