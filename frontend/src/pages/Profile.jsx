@@ -6,11 +6,14 @@ import SettingsSection from "../components/SettingsSection"; //
 import Header from "../components/Header";
 import { supabase } from "../supabaseClient";
 import { History, Settings, X } from "lucide-react"; //
+import { useMusic } from "../context/MusicContext";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 function Profile() {
   const [history, setHistory] = useState([]);
+  const { settings, setSettings } = useMusic(); //
   const [showSettings, setShowSettings] = useState(false); //
+  const [tempSettings, setTempSettings] = useState(null); //
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -51,7 +54,10 @@ function Profile() {
             </div>
             {/* Settings Toggle Button */}
             <button
-              onClick={() => setShowSettings(true)}
+              onClick={() => {
+                setTempSettings({...settings});
+                setShowSettings(true);
+              }}
               className="btn btn-outline-secondary rounded-circle p-3 d-flex align-items-center justify-content-center border-opacity-25"
               style={{ width: "50px", height: "50px" }}
             >
@@ -131,7 +137,7 @@ function Profile() {
               {/* Header with Title on Left and X on Right */}
               <div className="modal-header border-bottom border-secondary p-4 d-flex justify-content-between align-items-center">
                 <h5 className="modal-title fw-bold text-warning text-uppercase mb-0">
-                  Preferences
+                  Settings
                 </h5>
                 <button
                   type="button"
@@ -143,13 +149,21 @@ function Profile() {
               </div>
 
               <div className="modal-body p-0">
-                <SettingsSection />
+                {tempSettings && (
+                  <SettingsSection 
+                    currentSettings={tempSettings} 
+                    onUpdate={setTempSettings} 
+                  />
+                )}
               </div>
 
               <div className="modal-footer border-0 p-4 pt-0">
                 <button
                   className="btn btn-warning w-100 fw-bold py-2 text-uppercase"
-                  onClick={() => setShowSettings(false)}
+                  onClick={() => {
+                    setSettings(tempSettings);
+                    setShowSettings(false);
+                  }}
                 >
                   Done
                 </button>

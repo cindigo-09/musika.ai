@@ -2,21 +2,19 @@ import React from "react";
 import { useMusic } from "../context/MusicContext";
 import { Sliders, Volume2, MessageSquare, Zap } from "lucide-react";
 
-export default function SettingsSection() {
-  const { settings, setSettings } = useMusic();
-
+export default function SettingsSection({ currentSettings, onUpdate }) {
   const handleToggle = (key) => {
-    setSettings((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
+    onUpdate({
+      ...currentSettings,
+      [key]: !currentSettings[key],
+    });
   };
 
   const handleSelect = (key, value) => {
-    setSettings((prev) => ({
-      ...prev,
+    onUpdate({
+      ...currentSettings,
       [key]: value,
-    }));
+    });
   };
 
   return (
@@ -41,7 +39,7 @@ export default function SettingsSection() {
             className="form-check-input custom-switch"
             type="checkbox"
             role="switch"
-            checked={!settings.chatbotDisabled}
+            checked={!currentSettings.chatbotDisabled}
             onChange={() => handleToggle("chatbotDisabled")}
           />
         </div>
@@ -62,7 +60,7 @@ export default function SettingsSection() {
             className="form-check-input custom-switch"
             type="checkbox"
             role="switch"
-            checked={settings.volumeNormalization}
+            checked={currentSettings.volumeNormalization}
             onChange={() => handleToggle("volumeNormalization")}
           />
         </div>
@@ -75,7 +73,7 @@ export default function SettingsSection() {
         </label>
         <select
           className="form-select form-select-sm bg-dark text-light border-secondary shadow-none py-2"
-          value={settings.eqPreset}
+          value={currentSettings.eqPreset}
           onChange={(e) => handleSelect("eqPreset", e.target.value)}
           style={{ cursor: "pointer" }}
         >

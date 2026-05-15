@@ -133,12 +133,19 @@ export const MusicProvider = ({ children }) => {
 
   useEffect(() => {
     if (audioRef.current) {
-      // Apply volume normalization logic if enabled
       const finalVolume = settings.volumeNormalization ? volume * 0.8 : volume;
       audioRef.current.volume = finalVolume;
     }
     localStorage.setItem("musika-volume", volume);
   }, [volume, settings.volumeNormalization]);
+
+  // Handle Equalizer Presets
+  useEffect(() => {
+    // Note: Web Audio API Equalizer implementation requires CORS headers
+    // to be configured on the Supabase Storage bucket. 
+    // Until CORS is enabled, this remains a UI placeholder to prevent browser audio blocking.
+    console.log(`Equalizer preset changed to: ${settings.eqPreset}`);
+  }, [settings.eqPreset]);
 
   // 5. MEMOIZED LOGIC (useCallback)
   // These functions depend on the states defined above
