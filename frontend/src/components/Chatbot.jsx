@@ -326,7 +326,7 @@ const Chatbot = () => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "anthropic/claude-3.7-sonnet",
+            model: "anthropic/claude-3-haiku",
             messages: apiMessages,
             max_tokens: 500,
             stream: true,
@@ -340,7 +340,7 @@ const Chatbot = () => {
         try {
           const errBody = await response.json();
           errDetail = errBody?.error?.message || errBody?.message || errDetail;
-        } catch {}
+        } catch { }
         throw new Error(`OpenRouter: ${errDetail}`);
       }
 
@@ -367,9 +367,9 @@ const Chatbot = () => {
                 setMessages((prev) => {
                   const newMsgs = [...prev];
                   const lastIndex = newMsgs.length - 1;
-                  newMsgs[lastIndex] = { 
-                    ...newMsgs[lastIndex], 
-                    content: aiResponse 
+                  newMsgs[lastIndex] = {
+                    ...newMsgs[lastIndex],
+                    content: aiResponse
                   };
                   return newMsgs;
                 });
@@ -386,8 +386,8 @@ const Chatbot = () => {
       let userFriendly = "Sorry, something went wrong. Please try again.";
       if (errMsg.includes("402") || errMsg.toLowerCase().includes("credits") || errMsg.toLowerCase().includes("payment")) {
         userFriendly = "⚠️ OpenRouter API credits have run out. Please top up your OpenRouter account to continue using the AI.";
-      } else if (errMsg.includes("401") || errMsg.toLowerCase().includes("auth") || errMsg.toLowerCase().includes("key")) {
-        userFriendly = "⚠️ Invalid OpenRouter API key. Please check your `VITE_OPENROUTER_API_KEY` in `.env`.";
+      } else if (errMsg.includes("401") || errMsg.toLowerCase().includes("auth") || errMsg.toLowerCase().includes("key") || errMsg.toLowerCase().includes("expire")) {
+        userFriendly = "⚠️ Invalid or expired OpenRouter API key. Please check your `VITE_OPENROUTER_API_KEY` in `.env`.";
       } else if (errMsg.includes("429") || errMsg.toLowerCase().includes("rate limit")) {
         userFriendly = "⚠️ Rate limit hit. Please wait a moment and try again.";
       } else if (errMsg.includes("OpenRouter")) {
