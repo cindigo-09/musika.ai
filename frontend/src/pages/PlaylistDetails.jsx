@@ -250,6 +250,20 @@ export default function PlaylistDetails() {
     }
   };
 
+  const removeSongFromPlaylist = async (songId) => {
+    const { error } = await supabase
+      .from("playlist_songs")
+      .delete()
+      .eq("playlist_id", id)
+      .eq("song_id", songId);
+    if (!error) {
+      setPlaylistSongs((prev) => prev.filter((s) => s.id !== songId));
+      triggerToast("Song removed from playlist");
+    } else {
+      triggerToast(error.message, "error");
+    }
+  };
+
   if (loading)
     return (
       <div className="vh-100 bg-dark d-flex align-items-center justify-content-center">
@@ -426,23 +440,46 @@ export default function PlaylistDetails() {
                   </td>
                   <td className="text-secondary">{s.artist}</td>
                   <td className="text-end px-4">
-                    <button
-                      className="btn btn-link p-0"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFavorite(s.id);
-                      }}
-                    >
-                      <Heart
-                        size={18}
-                        fill={favoriteSongIds.has(s.id) ? "currentColor" : "none"}
-                        className={
-                          favoriteSongIds.has(s.id)
-                            ? "text-danger"
-                            : "text-secondary"
-                        }
-                      />
-                    </button>
+                    <div className="d-flex justify-content-end align-items-center gap-3">
+                      <button
+                        className="btn btn-link p-0"
+                        title="Toggle Favorite"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(s.id);
+                        }}
+                      >
+                        <Heart
+                          size={18}
+                          fill={favoriteSongIds.has(s.id) ? "currentColor" : "none"}
+                          className={
+                            favoriteSongIds.has(s.id)
+                              ? "text-danger"
+                              : "text-secondary"
+                          }
+                        />
+                      </button>
+                      {!isFavoritesPlaylist && (
+                        <button
+                          className="btn btn-link p-0 text-secondary"
+                          title="Remove from Playlist"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeSongFromPlaylist(s.id);
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.classList.remove('text-secondary');
+                            e.currentTarget.classList.add('text-danger');
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.classList.remove('text-danger');
+                            e.currentTarget.classList.add('text-secondary');
+                          }}
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
