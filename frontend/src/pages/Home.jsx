@@ -62,7 +62,7 @@ const MOODS = [
   "confidence",
   "carefree",
   "celebration",
-  "Mdorning calm",
+  "morning calm",
   "Defiant",
   "angry",
   "mischievous",

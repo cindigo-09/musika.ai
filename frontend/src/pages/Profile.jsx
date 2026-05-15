@@ -2,18 +2,24 @@ import React, { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import ProfileSection from "../components/ProfileSection";
 import SecuritySection from "../components/SecuritySection";
-import SettingsSection from "../components/SettingsSection"; //
+import SettingsSection from "../components/SettingsSection";
 import Header from "../components/Header";
 import { supabase } from "../supabaseClient";
-import { History, Settings, X } from "lucide-react"; //
+import { History, Settings, X } from "lucide-react";
 import { useMusic } from "../context/MusicContext";
 import "bootstrap/dist/css/bootstrap.min.css";
 
+/**
+ * User Profile Dashboard
+ * Displays listening history, manages account security, and provides access to global preferences.
+ */
 function Profile() {
   const [history, setHistory] = useState([]);
-  const { settings, setSettings } = useMusic(); //
-  const [showSettings, setShowSettings] = useState(false); //
-  const [tempSettings, setTempSettings] = useState(null); //
+  const { settings, setSettings } = useMusic();
+  const [showSettings, setShowSettings] = useState(false);
+  
+  /** Draft state for settings to support safe apply/cancel logic */
+  const [tempSettings, setTempSettings] = useState(null);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -44,15 +50,14 @@ function Profile() {
         <Sidebar />
         <main className="flex-grow-1 overflow-auto custom-scrollbar p-4 p-md-5">
           <header className="mb-5 d-flex justify-content-between align-items-end">
-            {" "}
-            {/* */}
             <div>
               <h2 className="display-4 fw-bold mb-2">Profile Settings</h2>
               <p className="text-secondary">
                 Manage your identity and track your listening activity.
               </p>
             </div>
-            {/* Settings Toggle Button */}
+            
+            {/** Settings Modal Trigger */}
             <button
               onClick={() => {
                 setTempSettings({...settings});
@@ -68,7 +73,10 @@ function Profile() {
           <div className="row g-5">
             <div className="col-lg-7">
               <ProfileSection />
-              {/* HISTORY TABLE START */}
+              {/** 
+                * Listening History Widget 
+                * Renders a chronologically ordered list of recently played tracks with their context.
+                */}
               <div
                 className="mt-5 p-4 rounded-4"
                 style={{ background: "#121216", border: "1px solid #333" }}
@@ -111,7 +119,6 @@ function Profile() {
                   </table>
                 </div>
               </div>
-              {/* HISTORY TABLE END */}
             </div>
 
             <div className="col-lg-5">
@@ -121,7 +128,10 @@ function Profile() {
         </main>
       </div>
 
-      {/* MODAL OVERLAY */}
+      {/** 
+        * Preferences Modal Overlay
+        * Uses 'tempSettings' to allow users to configure audio/UI preferences before committing them.
+        */}
       {showSettings && (
         <div
           className="modal fade show d-block"
@@ -134,7 +144,7 @@ function Profile() {
         >
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content bg-dark border border-secondary rounded-4 shadow-lg">
-              {/* Header with Title on Left and X on Right */}
+              {/** Modal Header & Dismiss Control */}
               <div className="modal-header border-bottom border-secondary p-4 d-flex justify-content-between align-items-center">
                 <h5 className="modal-title fw-bold text-warning text-uppercase mb-0">
                   Settings
